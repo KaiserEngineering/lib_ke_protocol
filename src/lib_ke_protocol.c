@@ -171,9 +171,10 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
 
 				for( uint8_t i = 0; i < dev->num_pids; i++)
 				{
-					tmp_pid.pid_unit = dev->rx_buffer[((i*BYTES_PER_STREAM_REQ) + 1) + KE_PCKT_DATA_START_POS];
-					tmp_pid.mode     = dev->rx_buffer[((i*BYTES_PER_STREAM_REQ) + 2) + KE_PCKT_DATA_START_POS];
-					tmp_pid.pid      = dev->rx_buffer[((i*BYTES_PER_STREAM_REQ) + 3) + KE_PCKT_DATA_START_POS];
+					tmp_pid.pid_unit  =  dev->rx_buffer[((i*BYTES_PER_STREAM_REQ) + 1) + KE_PCKT_DATA_START_POS];
+					tmp_pid.mode      =  dev->rx_buffer[((i*BYTES_PER_STREAM_REQ) + 2) + KE_PCKT_DATA_START_POS];
+					tmp_pid.pid       = (dev->rx_buffer[((i*BYTES_PER_STREAM_REQ) + 3) + KE_PCKT_DATA_START_POS] & 0xFF) << 8;
+					tmp_pid.pid      |= (dev->rx_buffer[((i*BYTES_PER_STREAM_REQ) + 4) + KE_PCKT_DATA_START_POS] & 0xFF);
 					dev->stream[i] = dev->init.req_pid( &tmp_pid );
 				}
 			}
@@ -330,7 +331,17 @@ static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd )
 		case KE_PID_STREAM_REPORT:
 			for( uint8_t i = 0; i < dev->num_pids; i++)
 			{
-				dev->tx_byte_count += snprintf((char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_PAYLOAD , "0x%02X=%.2f", (uint8_t)(dev->stream[i]->pid & 0xFF), dev->stream[i]->pid_value);
+				/* Check if this is a 2 byte PID */
+				if( ((dev->stream[i]->pid >> 8) & 0xFF) || 0 )
+					dev->tx_byte_count += snprintf((char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_PAYLOAD ,
+							"0x%02X%04X=%.2f", 0x01, (uint16_t)(dev->stream[i]->pid), dev->stream[i]->pid_value);
+
+				/* If not, assume it is a single byte PID */
+				else
+					dev->tx_byte_count += snprintf((char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_PAYLOAD ,
+							"0x%02X%02X=%.2f", 0x01, (uint8_t)(dev->stream[i]->pid & 0xFF), dev->stream[i]->pid_value);
+
+				/* Add a semi-colon after every PID except the last */
 				if( i < dev->num_pids - 1 )
 					dev->tx_buffer[dev->tx_byte_count++] = ';';
 			}

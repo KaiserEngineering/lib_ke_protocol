@@ -22,7 +22,7 @@
 #define KE_PCKT_CMD_POS              0x02
 #define KE_PCKT_DATA_START_POS       0x03
 
-#define BYTES_PER_STREAM_REQ         0x04
+#define BYTES_PER_STREAM_REQ         0x05
 
 #define KE_TIMEOUT                   1000
 
