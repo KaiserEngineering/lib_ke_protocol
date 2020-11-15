@@ -27,6 +27,7 @@
 #define KE_TIMEOUT                   1000
 
 typedef uint8_t (*TRANSMIT_DATA)(uint8_t *data, uint8_t len);
+typedef void (*REQUEST_ACTIVE_COOLING)(uint8_t level);
 
 typedef enum _ke_status {
     KE_ERROR,
@@ -43,6 +44,7 @@ typedef enum _ke_status {
 typedef struct _kep_init {
     TRANSMIT_DATA transmit;
     request_pid_data req_pid;
+    REQUEST_ACTIVE_COOLING cooling;
     uint8_t firmware_version_major;
     uint8_t firmware_version_minor;
     uint8_t firmware_version_hotfix;
