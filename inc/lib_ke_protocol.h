@@ -11,6 +11,7 @@
 #include "stdio.h"
 #include "lib_pid.h"
 #include "ke_communicaton_protocol.h"
+#include "lib_unit_conversion.h"
 
 #define KE_MAX_PAYLOAD                0x64
 #define KE_MAX_PIDS                   0xF

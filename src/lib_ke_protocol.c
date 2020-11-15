@@ -336,15 +336,21 @@ static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd )
 		case KE_PID_STREAM_REPORT:
 			for( uint8_t i = 0; i < dev->num_pids; i++)
 			{
+			    float value = dev->stream[i]->pid_value;
+
+			    if( dev->stream[i]->pid_unit != dev->stream[i]->base_unit ) {
+			        value = convert_units( dev->stream[i]->base_unit, dev->stream[i]->pid_unit, value );
+			    }
+
 				/* Check if this is a 2 byte PID */
 				if( ((dev->stream[i]->pid >> 8) & 0xFF) || 0 )
 					dev->tx_byte_count += snprintf((char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_PAYLOAD ,
-							"0x%02X%04X=%.2f", dev->stream[i]->mode, (uint16_t)(dev->stream[i]->pid), dev->stream[i]->pid_value);
+							"0x%02X%04X=%.2f", dev->stream[i]->mode, (uint16_t)(dev->stream[i]->pid), value);
 
 				/* If not, assume it is a single byte PID */
 				else
 					dev->tx_byte_count += snprintf((char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_PAYLOAD ,
-							"0x%02X%02X=%.2f", dev->stream[i]->mode, (uint8_t)(dev->stream[i]->pid & 0xFF), dev->stream[i]->pid_value);
+							"0x%02X%02X=%.2f", dev->stream[i]->mode, (uint8_t)(dev->stream[i]->pid & 0xFF), value);
 
 				/* Add a semi-colon after every PID except the last */
 				if( i < dev->num_pids - 1 )
