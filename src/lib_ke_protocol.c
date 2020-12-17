@@ -338,7 +338,9 @@ static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd )
 			{
 			    float value = dev->stream[i]->pid_value;
 
-			    if( dev->stream[i]->pid_unit != dev->stream[i]->base_unit ) {
+			    if( dev->stream[i]->timestamp == 0 ) {
+			        value = 0;
+			    } else if( dev->stream[i]->pid_unit != dev->stream[i]->base_unit ) {
 			        value = convert_units( dev->stream[i]->base_unit, dev->stream[i]->pid_unit, value );
 			    }
 
