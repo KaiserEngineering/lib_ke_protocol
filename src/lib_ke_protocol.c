@@ -337,22 +337,25 @@ static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd )
 			for( uint8_t i = 0; i < dev->num_pids; i++)
 			{
 			    float value = dev->stream[i]->pid_value;
+			    uint8_t units = dev->stream[i]->base_unit;
 
 			    if( dev->stream[i]->timestamp == 0 ) {
 			        value = 0;
 			    } else if( dev->stream[i]->pid_unit != dev->stream[i]->base_unit ) {
-			        value = convert_units( dev->stream[i]->base_unit, dev->stream[i]->pid_unit, value );
+			        units = convert_units( dev->stream[i]->base_unit, dev->stream[i]->pid_unit, &value );
 			    }
+
+			    /* Data stream format: <pid>:<units>=<value> */
 
 				/* Check if this is a 2 byte PID */
 				if( ((dev->stream[i]->pid >> 8) & 0xFF) || 0 )
 					dev->tx_byte_count += snprintf((char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_PAYLOAD ,
-							"0x%02X%04X=%.2f", dev->stream[i]->mode, (uint16_t)(dev->stream[i]->pid), value);
+							"0x%02X%04X:%u:%.2f", dev->stream[i]->mode, (uint16_t)(dev->stream[i]->pid), units, value);
 
 				/* If not, assume it is a single byte PID */
 				else
 					dev->tx_byte_count += snprintf((char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_PAYLOAD ,
-							"0x%02X%02X=%.2f", dev->stream[i]->mode, (uint8_t)(dev->stream[i]->pid & 0xFF), value);
+							"0x%02X%02X:%u:%.2f", dev->stream[i]->mode, (uint8_t)(dev->stream[i]->pid & 0xFF), units, value);
 
 				/* Add a semi-colon after every PID except the last */
 				if( i < dev->num_pids - 1 )
