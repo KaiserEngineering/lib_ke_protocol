@@ -345,7 +345,7 @@ static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd )
 			        units = convert_units( dev->stream[i]->base_unit, dev->stream[i]->pid_unit, &value );
 			    }
 
-			    /* Data stream format: <pid>:<units>=<value> */
+			    /* Data stream format: <pid>:<units>:<value> */
 
 				/* Check if this is a 2 byte PID */
 				if( ((dev->stream[i]->pid >> 8) & 0xFF) || 0 )
