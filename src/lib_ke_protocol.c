@@ -359,7 +359,7 @@ static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd )
 
 				/* Add a semi-colon after every PID except the last */
 				if( i < dev->num_pids - 1 )
-					dev->tx_buffer[dev->tx_byte_count++] = ';';
+					dev->tx_buffer[dev->tx_byte_count++] = ',';
 			}
 			break;
 		case KE_LCD_ENABLE:
