@@ -44,6 +44,7 @@ typedef enum _ke_status {
 
 typedef struct _kep_init {
     TRANSMIT_DATA transmit;
+    clear_pid_request clear_pid;
     request_pid_data req_pid;
     REQUEST_ACTIVE_COOLING cooling;
     uint8_t firmware_version_major;

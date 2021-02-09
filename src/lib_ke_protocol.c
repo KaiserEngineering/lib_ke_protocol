@@ -37,6 +37,8 @@ uint32_t get_KE_tx_abort_count( PKE_PACKET_MANAGER dev )
 
 KE_STATUS KE_Initialize( PKE_PACKET_MANAGER dev )
 {
+    for( uint8_t i = 0; i < KE_MAX_PIDS; i++ )
+        dev->stream[i] = NULL;
     dev->status_flags = 0;
     clear_diagnostics( dev );
     flush_tx_buffer( dev );
@@ -182,11 +184,11 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
                     tmp_pid.pid      |= (dev->rx_buffer[((i*BYTES_PER_STREAM_REQ) + 4) + KE_PCKT_DATA_START_POS] & 0xFF);
                     dev->stream[i] = dev->init.req_pid( &tmp_pid );
                 }
+
+                dev->status_flags |= KE_STREAM_ACTIVE;
+
+                dev->status_flags |= KE_PID_UPDATED;
             }
-
-            dev->status_flags |= KE_STREAM_ACTIVE;
-
-            dev->status_flags |= KE_PID_UPDATED;
 
             Generate_TX_Message(  dev, KE_ACK  );
 
@@ -459,8 +461,10 @@ static void clear_pid_entries( PKE_PACKET_MANAGER dev )
 {
     for( uint8_t i = 0; i < KE_MAX_PIDS; i++ )
     {
-        dev->pid_request[i] = 0;
-        dev->pid_results[i] = 0;
+        if( dev->stream[i] != NULL )
+        {
+            dev->init.clear_pid( dev->stream[i] );
+        }
     }
 
     /* Reset the byte count */
