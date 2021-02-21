@@ -188,6 +188,8 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
                 dev->status_flags |= KE_STREAM_ACTIVE;
 
                 dev->status_flags |= KE_PID_UPDATED;
+
+                dev->status_flags &= ~KE_PENDING_ACK;
             }
 
             Generate_TX_Message(  dev, KE_ACK  );
