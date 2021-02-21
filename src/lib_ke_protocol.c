@@ -466,6 +466,7 @@ static void clear_pid_entries( PKE_PACKET_MANAGER dev )
         if( dev->stream[i] != NULL )
         {
             dev->init.clear_pid( dev->stream[i] );
+            dev->stream[i] = NULL;
         }
     }
 
