@@ -116,7 +116,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
             dev->status_flags &= ~KE_PENDING_ACK;
 
             /* The active cooling byte is optional in an ACK */
-            if( dev->rx_byte_count == 0x04 )
+            if( dev->rx_byte_count == 0x05 )
                 dev->init.cooling( dev->rx_buffer[3] );
 
             break;
