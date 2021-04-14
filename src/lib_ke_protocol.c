@@ -192,7 +192,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
                 dev->status_flags &= ~KE_PENDING_ACK;
             }
 
-            Generate_TX_Message(  dev, KE_ACK  );
+            Generate_TX_Message(  dev, KE_PID_STREAM_REPORT  );
 
             break;
 
