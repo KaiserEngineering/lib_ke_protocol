@@ -25,7 +25,7 @@
 
 #define BYTES_PER_STREAM_REQ         0x05
 
-#define KE_TIMEOUT                   500
+#define KE_TIMEOUT                   200
 
 typedef uint8_t (*TRANSMIT_DATA)(uint8_t *data, uint8_t len);
 typedef void (*REQUEST_ACTIVE_COOLING)(uint8_t level);
