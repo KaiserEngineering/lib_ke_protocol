@@ -11,7 +11,6 @@
 
 static uint32_t ke_tick = 0;
 
-
 static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev );
 static void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd );
 static void clear_diagnostics( PKE_PACKET_MANAGER dev );
@@ -40,6 +39,7 @@ KE_STATUS KE_Initialize( PKE_PACKET_MANAGER dev )
     for( uint8_t i = 0; i < KE_MAX_PIDS; i++ )
         dev->stream[i] = NULL;
     dev->status_flags = 0;
+    dev->num_retries = 0;
     clear_diagnostics( dev );
     flush_tx_buffer( dev );
     flush_rx_buffer( dev );
@@ -58,6 +58,8 @@ KE_STATUS KE_Service( PKE_PACKET_MANAGER dev )
     {
         KE_Process_Packet(dev);
 
+        dev->num_retries = 0;
+
         dev->status_flags &= ~KE_PCKT_CMPLT;
 
         reset_idle_time( dev );
@@ -74,6 +76,15 @@ KE_STATUS KE_Service( PKE_PACKET_MANAGER dev )
             {
                 /* If so, clear the pending ack flag in order to re-send the data */
                 dev->status_flags &= ~KE_PENDING_ACK;
+
+                /* Increment the consecutive retry count */
+                dev->num_retries++;
+
+                if( dev->num_retries > MAX_RETRIES )
+                {
+                    dev->num_retries = 0;
+                    clear_pid_entries( dev );
+                }
 
                 /* Abort the tx message and increment the transmission abort counter */
                 dev->diagnostic.tx_abort_count++;

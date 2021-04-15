@@ -26,6 +26,7 @@
 #define BYTES_PER_STREAM_REQ         0x05
 
 #define KE_TIMEOUT                   200
+#define MAX_RETRIES                  25
 
 typedef uint8_t (*TRANSMIT_DATA)(uint8_t *data, uint8_t len);
 typedef void (*REQUEST_ACTIVE_COOLING)(uint8_t level);
@@ -63,6 +64,7 @@ typedef struct _ke_packet_manager {
     uint32_t ke_time;
     KEP_INIT init;
     KEP_DIAGNOSTICS diagnostic;
+    uint32_t num_retries;
     uint16_t status_flags;
         #define KE_RX_IN_PROGRESS  (1 << 0)
         #define KE_PCKT_CMPLT      (1 << 1)
