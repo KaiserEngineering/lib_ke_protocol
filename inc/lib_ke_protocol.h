@@ -79,8 +79,6 @@ typedef struct _ke_packet_manager {
     uint8_t rx_buffer[KE_MAX_PAYLOAD];
     uint8_t rx_byte_count;
     uint8_t num_pids;
-    uint8_t pid_request[KE_MAX_PIDS];
-    float pid_results[KE_MAX_PIDS];
 } KE_PACKET_MANAGER, *PKE_PACKET_MANAGER;
 
 void KE_tick( void );
