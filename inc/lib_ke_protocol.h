@@ -60,6 +60,7 @@ typedef struct _kep_diagnostics {
 } KEP_DIAGNOSTICS, *PKEP_DIAGNOSTICS;
 
 typedef struct _ke_packet_manager {
+    uint8_t stream_unit[KE_MAX_PIDS];
 	PTR_PID_DATA stream[KE_MAX_PIDS];
     uint32_t ke_time;
     KEP_INIT init;

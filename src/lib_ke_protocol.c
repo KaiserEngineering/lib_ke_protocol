@@ -193,6 +193,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
                     tmp_pid.mode      =  dev->rx_buffer[((i*BYTES_PER_STREAM_REQ) + 2) + KE_PCKT_DATA_START_POS];
                     tmp_pid.pid       = (dev->rx_buffer[((i*BYTES_PER_STREAM_REQ) + 3) + KE_PCKT_DATA_START_POS] & 0xFF) << 8;
                     tmp_pid.pid      |= (dev->rx_buffer[((i*BYTES_PER_STREAM_REQ) + 4) + KE_PCKT_DATA_START_POS] & 0xFF);
+                    dev->stream_unit[i] = tmp_pid.pid_unit;
                     dev->stream[i] = dev->init.req_pid( &tmp_pid );
                 }
 
@@ -356,8 +357,8 @@ static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd )
 
                 if( dev->stream[i]->timestamp == 0 ) {
                     value = 0;
-                } else if( dev->stream[i]->pid_unit != dev->stream[i]->base_unit ) {
-                    units = convert_units( dev->stream[i]->base_unit, dev->stream[i]->pid_unit, &value );
+                } else if( dev->stream_unit[i] != dev->stream[i]->base_unit ) {
+                    units = convert_units( dev->stream[i]->base_unit, dev->stream_unit[i], &value );
                 }
 
                 /* Data stream format: <pid>:<units>:<value> */
@@ -478,6 +479,7 @@ static void clear_pid_entries( PKE_PACKET_MANAGER dev )
         {
             dev->init.clear_pid( dev->stream[i] );
             dev->stream[i] = NULL;
+            dev->stream_unit[i] = PID_UNITS_NOT_APPLICABLE;
         }
     }
 
