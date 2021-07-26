@@ -177,6 +177,10 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
 
         case KE_PID_STREAM_NEW:
 
+            /* TODO for now an empty request will act like a heartbeat */
+            if( dev->rx_byte_count == 3 )
+                Generate_TX_Message( dev, KE_ACK  );
+
             /* Make sure the packet has data */
             if( dev->rx_byte_count > KE_PCKT_DATA_START_POS )
             {
