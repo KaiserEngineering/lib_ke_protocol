@@ -486,7 +486,7 @@ static void clear_pid_entries( PKE_PACKET_MANAGER dev )
         {
             dev->init.clear_pid( dev->stream[i] );
             dev->stream[i] = NULL;
-            dev->stream_unit[i] = PID_UNITS_NOT_APPLICABLE;
+            dev->stream_unit[i] = PID_UNITS_RESERVED;
         }
     }
 
