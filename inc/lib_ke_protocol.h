@@ -9,6 +9,7 @@
 #define LIB_KE_PROTOCOL_H_
 
 #include "stdio.h"
+#include "stdint.h"
 #include "lib_pid.h"
 #include "ke_communicaton_protocol.h"
 #include "lib_unit_conversion.h"
