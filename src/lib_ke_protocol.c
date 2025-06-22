@@ -12,7 +12,7 @@
 static uint32_t ke_tick = 0;
 
 static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev );
-static void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd );
+static void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, uint32_t arg );
 static void clear_diagnostics( PKE_PACKET_MANAGER dev );
 static void flush_tx_buffer( PKE_PACKET_MANAGER dev );
 static void flush_rx_buffer( PKE_PACKET_MANAGER dev );
@@ -98,7 +98,7 @@ KE_STATUS KE_Service( PKE_PACKET_MANAGER dev )
             if( dev->status_flags & KE_NEW_DATA )
             {
                 /* There are no pending message, send the new data */
-                Generate_TX_Message(dev, KE_PID_STREAM_REPORT);
+                Generate_TX_Message(dev, KE_PID_STREAM_REPORT, 0);
 
                 dev->status_flags |= KE_PENDING_ACK;
             }
@@ -126,9 +126,11 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
             /* ACK received, clear the pending ACK flag */
             dev->status_flags &= ~KE_PENDING_ACK;
 
+			#if FAN_CTRL_ACTIVE
             /* The active cooling byte is optional in an ACK */
             if( dev->rx_byte_count == 0x05 )
                 dev->init.cooling( dev->rx_buffer[3] );
+			#endif
 
             break;
 
@@ -139,7 +141,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
         case KE_POWER_CYCLE:
 
             /* Acknowledge the message */
-            Generate_TX_Message( dev, KE_ACK  );
+            Generate_TX_Message( dev, KE_ACK, 0 );
 
             /* System is shutting down */
             KE_Initialize( dev );
@@ -152,7 +154,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
         case KE_SYS_READY:
 
             /* Acknowledge the message */
-            Generate_TX_Message( dev, KE_ACK  );
+            Generate_TX_Message( dev, KE_ACK, 0 );
 
             /* ACK the successfully received message */
             dev->status_flags |= KE_SYSTEM_READY;
@@ -162,7 +164,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
         case KE_FIRMWARE_REQ:
 
             /* Report the firmware */
-            Generate_TX_Message( dev, KE_FIRMWARE_REPORT  );
+            Generate_TX_Message( dev, KE_FIRMWARE_REPORT, 0 );
 
 
             dev->status_flags &= ~KE_STREAM_ACTIVE;
@@ -171,7 +173,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
 
         case KE_HEARTBEAT:
 
-            Generate_TX_Message( dev, KE_ACK  );
+            Generate_TX_Message( dev, KE_ACK, 0 );
 
             break;
 
@@ -179,7 +181,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
 
             /* TODO for now an empty request will act like a heartbeat */
             if( dev->rx_byte_count == 3 )
-                Generate_TX_Message( dev, KE_ACK  );
+                Generate_TX_Message( dev, KE_ACK, 0 );
 
             /* Make sure the packet has data */
             if( dev->rx_byte_count > KE_PCKT_DATA_START_POS )
@@ -194,9 +196,11 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
                 for( uint8_t i = 0; i < dev->num_pids; i++)
                 {
                     tmp_pid.pid_unit  =  dev->rx_buffer[((i*BYTES_PER_STREAM_REQ) + 1) + KE_PCKT_DATA_START_POS];
-                    tmp_pid.mode      =  dev->rx_buffer[((i*BYTES_PER_STREAM_REQ) + 2) + KE_PCKT_DATA_START_POS];
-                    tmp_pid.pid       = (dev->rx_buffer[((i*BYTES_PER_STREAM_REQ) + 3) + KE_PCKT_DATA_START_POS] & 0xFF) << 8;
-                    tmp_pid.pid      |= (dev->rx_buffer[((i*BYTES_PER_STREAM_REQ) + 4) + KE_PCKT_DATA_START_POS] & 0xFF);
+                    tmp_pid.pid_uuid =
+                        ((uint32_t)dev->rx_buffer[((i * BYTES_PER_STREAM_REQ) + 2) + KE_PCKT_DATA_START_POS] << 24) |
+                        ((uint32_t)dev->rx_buffer[((i * BYTES_PER_STREAM_REQ) + 3) + KE_PCKT_DATA_START_POS] << 16) |
+                        ((uint32_t)dev->rx_buffer[((i * BYTES_PER_STREAM_REQ) + 4) + KE_PCKT_DATA_START_POS] << 8)  |
+                        ((uint32_t)dev->rx_buffer[((i * BYTES_PER_STREAM_REQ) + 5) + KE_PCKT_DATA_START_POS]);
                     dev->stream_unit[i] = tmp_pid.pid_unit;
                     dev->stream[i] = dev->init.req_pid( &tmp_pid );
                 }
@@ -208,7 +212,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
                 dev->status_flags &= ~KE_PENDING_ACK;
             }
 
-            Generate_TX_Message(  dev, KE_PID_STREAM_REPORT  );
+            Generate_TX_Message(  dev, KE_PID_STREAM_REPORT, 0 );
 
             break;
 
@@ -233,7 +237,7 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
         }
 
         /* Start of a new message, reset the buffer */
-        memset( dev->rx_buffer, 0, KE_MAX_PAYLOAD );
+        memset( dev->rx_buffer, 0, KE_MAX_RX_PAYLOAD );
 
         /* Reset the byte count */
         dev->rx_byte_count = 0x00;
@@ -251,7 +255,7 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
     else if ( dev->status_flags & KE_RX_IN_PROGRESS )
     {
         /* Verify the UART buffer has room */
-        if( dev->rx_byte_count >= KE_MAX_PAYLOAD )
+        if( dev->rx_byte_count >= KE_MAX_RX_PAYLOAD )
         {
             /* Increment the number of aborted RX messages */
             dev->diagnostic.rx_abort_count++;
@@ -260,7 +264,7 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
             dev->status_flags &= ~KE_RX_IN_PROGRESS;
 
             /* Reset the UART buffer, something has gone horribly wrong */
-            memset( dev->rx_buffer, 0, KE_MAX_PAYLOAD );
+            memset( dev->rx_buffer, 0, KE_MAX_RX_PAYLOAD );
 
             /* Reset the byte count */
             dev->rx_byte_count = 0;
@@ -296,7 +300,7 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
             dev->status_flags &= ~KE_RX_IN_PROGRESS;
 
             /* Reset the UART buffer, something has gone horribly wrong */
-            memset( dev->rx_buffer, 0, KE_MAX_PAYLOAD );
+            memset( dev->rx_buffer, 0, KE_MAX_RX_PAYLOAD );
 
             /* Reset the byte count */
             dev->rx_byte_count = 0;
@@ -310,7 +314,7 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
     return KE_ERROR;
 }
 
-static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd )
+static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, uint32_t arg )
 {
     /* Clear the buffer */
     flush_tx_buffer( dev );
@@ -370,14 +374,14 @@ static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd )
                         /* Data stream format: <pid>:<units>:<value> */
 
                         /* Check if this is a 2 byte PID */
-                        if( ((dev->stream[i]->pid >> 8) & 0xFF) || 0 )
-                            dev->tx_byte_count += snprintf((char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_PAYLOAD ,
-                                    "0x%02X%04X:%u:%.2f", dev->stream[i]->mode, (uint16_t)(dev->stream[i]->pid), units, value);
+                        if( ((dev->stream[i]->pid_uuid >> 8) & 0xFF) || 0 )
+                            dev->tx_byte_count += snprintf((char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_TX_PAYLOAD ,
+                                    "0x%02X%04X:%u:%.2f", (uint8_t)(dev->stream[i]->pid_uuid >> 16), (uint16_t)(dev->stream[i]->pid_uuid), units, value);
 
                         /* If not, assume it is a single byte PID */
                         else
-                            dev->tx_byte_count += snprintf((char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_PAYLOAD ,
-                                    "0x%02X%02X:%u:%.2f", dev->stream[i]->mode, (uint8_t)(dev->stream[i]->pid & 0xFF), units, value);
+                            dev->tx_byte_count += snprintf((char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_TX_PAYLOAD ,
+                                    "0x%02X%02X:%u:%.2f", (uint8_t)(dev->stream[i]->pid_uuid >> 16), (uint8_t)(dev->stream[i]->pid_uuid & 0xFF), units, value);
 
                         /* Add a semi-colon after every PID except the last */
                         if( i < remaining_delim )
@@ -422,11 +426,21 @@ static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd )
             /*TODO: Add support to be a host */
             break;
         case KE_FIRMWARE_REPORT:
-            dev->tx_byte_count += snprintf( (char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_PAYLOAD , "%02d.%02d.%02d",
+            dev->tx_byte_count += snprintf( (char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_TX_PAYLOAD , "%02d.%02d.%02d",
                     dev->init.firmware_version_major ,
                     dev->init.firmware_version_minor,
                     dev->init.firmware_version_hotfix );
             break;
+        case KE_BACKGROUND_SEND:
+
+        	break;
+        case KE_BACKGROUND_RECEIVE:
+
+        	break;
+        case KE_CONFIG_SEND:
+        	break;
+        case KE_CONFIG_RECEIVE:
+        	break;
         default:
             break;
     }
@@ -463,7 +477,7 @@ static void clear_diagnostics( PKE_PACKET_MANAGER dev )
 static void flush_tx_buffer( PKE_PACKET_MANAGER dev )
 {
     /* Clear the buffer */
-    memset( dev->tx_buffer, 0, KE_MAX_PAYLOAD );
+    memset( dev->tx_buffer, 0, KE_MAX_TX_PAYLOAD );
 
     /* Reset the byte count */
     dev->tx_byte_count = 0;
@@ -472,7 +486,7 @@ static void flush_tx_buffer( PKE_PACKET_MANAGER dev )
 static void flush_rx_buffer( PKE_PACKET_MANAGER dev )
 {
     /* Clear the buffer */
-    memset( dev->rx_buffer, 0, KE_MAX_PAYLOAD );
+    memset( dev->rx_buffer, 0, KE_MAX_RX_PAYLOAD );
 
     /* Reset the byte count */
     dev->rx_byte_count = 0;

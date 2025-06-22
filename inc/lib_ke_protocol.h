@@ -14,7 +14,12 @@
 #include "ke_communicaton_protocol.h"
 #include "lib_unit_conversion.h"
 
-#define KE_MAX_PAYLOAD                0x64
+#ifndef KE_MAX_TX_PAYLOAD
+#define KE_MAX_TX_PAYLOAD             0xFFFF + 0xF
+#endif
+#ifndef KE_MAX_RX_PAYLOAD
+#define KE_MAX_RX_PAYLOAD             819200 + 16
+#endif
 #define KE_MAX_PIDS                   0xF
 #define KE_EOL                        0x0A
 #define KE_SOL                        0xFF
@@ -76,10 +81,10 @@ typedef struct _ke_packet_manager {
         #define KE_PID_UPDATED     (1 << 5)
         #define KE_SYSTEM_REBOOT   (1 << 6)
         #define KE_NEW_DATA        (1 << 7)
-    uint8_t tx_buffer[KE_MAX_PAYLOAD];
-    uint8_t tx_byte_count;
-    uint8_t rx_buffer[KE_MAX_PAYLOAD];
-    uint8_t rx_byte_count;
+    uint8_t tx_buffer[KE_MAX_TX_PAYLOAD];
+    uint32_t tx_byte_count;
+    uint8_t rx_buffer[KE_MAX_RX_PAYLOAD];
+    uint32_t rx_byte_count;
     uint8_t num_pids;
 } KE_PACKET_MANAGER, *PKE_PACKET_MANAGER;
 

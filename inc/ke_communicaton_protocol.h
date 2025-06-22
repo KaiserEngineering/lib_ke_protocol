@@ -27,7 +27,11 @@ typedef enum KE_CP_OP_CODES {
     KE_POWER_CYCLE             = (uint8_t)0x14,    /* Power cycle                                  */
     KE_FIRMWARE_REQ            = (uint8_t)0x15,    /* Request firmware version                     */
     KE_FIRMWARE_REPORT         = (uint8_t)0x16,    /* Report firmware version                      */
-    KE_FIRMWARE_UPDATE         = (uint8_t)0x17     /* Place device in firmware update mode         */
+    KE_FIRMWARE_UPDATE         = (uint8_t)0x17,    /* Place device in firmware update mode         */
+	KE_BACKGROUND_SEND         = (uint8_t)0x19,    /* Send background image                        */
+	KE_BACKGROUND_RECEIVE      = (uint8_t)0x20,    /* Receive background image                     */
+	KE_CONFIG_SEND             = (uint8_t)0x21,    /* Send JSON configuration                      */
+	KE_CONFIG_RECEIVE          = (uint8_t)0x22,    /* Receive JSON configuration                   */
 } KE_CP_OP_CODES;
 
 #endif /* KE_COMMUNICATON_PROTOCOL_H_ */
