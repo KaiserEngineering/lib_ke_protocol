@@ -350,9 +350,10 @@ static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, ui
                 if( dev->stream[i]->timestamp == 0 ) {
                     remaining_delim--;
                 } else {
-                    if( dev->stream_unit[i] != dev->stream[i]->base_unit ) {
-                        units = convert_units( dev->stream[i]->base_unit, dev->stream_unit[i], &value );
-                    }
+                    // TODO remove convert_units
+                    //if( dev->stream_unit[i] != dev->stream[i]->base_unit ) {
+                    //    units = convert_units( dev->stream[i]->base_unit, dev->stream_unit[i], &value );
+                    //}
 
                         /* Data stream format: <pid>:<units>:<value> */
 

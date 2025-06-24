@@ -12,7 +12,6 @@
 #include "stdint.h"
 #include "lib_pid.h"
 #include "ke_communicaton_protocol.h"
-#include "lib_unit_conversion.h"
 
 #ifndef KE_MAX_TX_PAYLOAD
 #define KE_MAX_TX_PAYLOAD             0xFFFF + 0xF
