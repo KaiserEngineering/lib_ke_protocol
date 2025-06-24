@@ -285,13 +285,13 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
             dev->diagnostic.rx_abort_count++;
             dev->status_flags &= ~KE_RX_IN_PROGRESS;
             dev->rx_byte_count = 0;
-            return KE_BUFFER_FULL;
+            return KE_OUT_OF_SYNC;;
         }
 
         return KE_OK;
     }
 
-    return KE_OUT_OF_SYNC;
+    return KE_OK;
 }
 
 static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, uint32_t arg )
