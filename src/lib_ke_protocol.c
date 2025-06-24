@@ -130,7 +130,8 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
 			#if FAN_CTRL_ACTIVE
             /* The active cooling byte is optional in an ACK */
             if( dev->rx_byte_count == 0x05 )
-                dev->init.cooling( dev->rx_buffer[3] );
+            	if( dev->init.cooling != NULL )
+            		dev->init.cooling( dev->rx_buffer[3] );
 			#endif
 
             break;
@@ -203,7 +204,8 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
                         ((uint32_t)dev->rx_buffer[((i * BYTES_PER_STREAM_REQ) + 4) + KE_PCKT_DATA_START_POS] << 8)  |
                         ((uint32_t)dev->rx_buffer[((i * BYTES_PER_STREAM_REQ) + 5) + KE_PCKT_DATA_START_POS]);
                     dev->stream_unit[i] = tmp_pid.pid_unit;
-                    dev->stream[i] = dev->init.req_pid( &tmp_pid );
+                    if( dev->init.req_pid != NULL )
+                    	dev->stream[i] = dev->init.req_pid( &tmp_pid );
                 }
 
                 dev->status_flags |= KE_STREAM_ACTIVE;
@@ -489,7 +491,8 @@ static void clear_pid_entries( PKE_PACKET_MANAGER dev )
     {
         if( dev->stream[i] != NULL )
         {
-            dev->init.clear_pid( dev->stream[i] );
+        	if( dev->init.clear_pid != NULL )
+        		dev->init.clear_pid( dev->stream[i] );
             dev->stream[i] = NULL;
             dev->stream_unit[i] = PID_UNITS_RESERVED;
         }
