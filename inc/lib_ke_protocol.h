@@ -21,13 +21,21 @@
 #define KE_MAX_RX_PAYLOAD             819200 + 16
 #endif
 #define KE_MAX_PIDS                   0xF
-#define KE_EOL                        0x0A
-#define KE_SOL                        0xFF
+#define KE_SOL_BYTE0                  0xDE
+#define KE_SOL_BYTE1                  0xAD
+#define KE_SOL_BYTE2                  0xBE
+#define KE_SOL_BYTE3                  0xEF
 
-#define KE_PCKT_SOL_POS              0x00
-#define KE_PCKT_LEN_POS              0x01
-#define KE_PCKT_CMD_POS              0x02
-#define KE_PCKT_DATA_START_POS       0x03
+#define KE_PCKT_SOL_BYTE0_POS        0x01
+#define KE_PCKT_SOL_BYTE1_POS        0x02
+#define KE_PCKT_SOL_BYTE2_POS        0x03
+#define KE_PCKT_SOL_BYTE3_POS        0x04
+#define KE_PCKT_LEN_BYTE0_POS        0x05
+#define KE_PCKT_LEN_BYTE1_POS        0x06
+#define KE_PCKT_LEN_BYTE2_POS        0x07
+#define KE_PCKT_LEN_BYTE3_POS        0x08
+#define KE_PCKT_CMD_POS              0x09
+#define KE_PCKT_DATA_START_POS       0x010
 
 #define BYTES_PER_STREAM_REQ         0x05
 
@@ -49,7 +57,13 @@ typedef enum _ke_status {
     KE_OK
 } KE_STATUS, *PKE_STATUS;
 
+typedef enum _ke_dev_role {
+    KE_PRIMARY,
+	KE_SECONDARY
+} KE_DEV_ROLE, *PKE_DEV_ROLE;
+
 typedef struct _kep_init {
+	KE_DEV_ROLE role;
     TRANSMIT_DATA transmit;
     clear_pid_request clear_pid;
     request_pid_data req_pid;

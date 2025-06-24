@@ -18,6 +18,7 @@ static void flush_tx_buffer( PKE_PACKET_MANAGER dev );
 static void flush_rx_buffer( PKE_PACKET_MANAGER dev );
 static void clear_pid_entries( PKE_PACKET_MANAGER dev );
 static void reset_idle_time( PKE_PACKET_MANAGER dev );
+static uint8_t crc8(const uint8_t *data, size_t len);
 
 uint32_t get_KE_rx_count( PKE_PACKET_MANAGER dev )
 {
@@ -226,92 +227,71 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
 
 KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
 {
-    /* Look for a start of line byte */
-    if( byte == KE_SOL )
-    {
-        /* Check if a current RX is in progress */
-        if ( dev->status_flags & KE_RX_IN_PROGRESS )
-        {
-            /* Increment the number of aborted RX messages */
-            dev->diagnostic.rx_abort_count++;
-        }
-
-        /* Start of a new message, reset the buffer */
-        memset( dev->rx_buffer, 0, KE_MAX_RX_PAYLOAD );
-
-        /* Reset the byte count */
-        dev->rx_byte_count = 0x00;
-
-        /* Add the byte to the buffer */
+    // Add the byte to the buffer
+    if (dev->rx_byte_count < KE_MAX_RX_PAYLOAD) {
         dev->rx_buffer[dev->rx_byte_count++] = byte;
-
-        /* Indicate an RX is in progress */
-        dev->status_flags |= KE_RX_IN_PROGRESS;
-
-        return KE_START_OF_NEW_MSG;
+    } else {
+        dev->diagnostic.rx_abort_count++;
+        dev->status_flags &= ~KE_RX_IN_PROGRESS;
+        dev->rx_byte_count = 0;
+        return KE_BUFFER_FULL;
     }
 
-    /* A Message is in progress */
-    else if ( dev->status_flags & KE_RX_IN_PROGRESS )
-    {
-        /* Verify the UART buffer has room */
-        if( dev->rx_byte_count >= KE_MAX_RX_PAYLOAD )
+    // Check for SOL sequence using a sliding window
+    if (dev->rx_byte_count >= 4) {
+        int i = dev->rx_byte_count - 4;
+        if (dev->rx_buffer[i + 0] == KE_SOL_BYTE0 &&
+            dev->rx_buffer[i + 1] == KE_SOL_BYTE1 &&
+            dev->rx_buffer[i + 2] == KE_SOL_BYTE2 &&
+            dev->rx_buffer[i + 3] == KE_SOL_BYTE3)
         {
-            /* Increment the number of aborted RX messages */
-            dev->diagnostic.rx_abort_count++;
+            // Found SOL — restart buffer from this point
+            if (dev->status_flags & KE_RX_IN_PROGRESS) {
+                dev->diagnostic.rx_abort_count++;
+            }
 
-            /* Indicate an RX has ended */
-            dev->status_flags &= ~KE_RX_IN_PROGRESS;
+            // Shift SOL to index 0
+            memmove(dev->rx_buffer, &dev->rx_buffer[i], dev->rx_byte_count - i);
+            dev->rx_byte_count = dev->rx_byte_count - i;
 
-            /* Reset the UART buffer, something has gone horribly wrong */
-            memset( dev->rx_buffer, 0, KE_MAX_RX_PAYLOAD );
+            dev->status_flags |= KE_RX_IN_PROGRESS;
+            dev->status_flags &= ~KE_PCKT_CMPLT;
 
-            /* Reset the byte count */
-            dev->rx_byte_count = 0;
-
-            return KE_BUFFER_FULL;
+            return KE_START_OF_NEW_MSG;
         }
+    }
 
-        /* Add the byte to the buffer */
-        dev->rx_buffer[dev->rx_byte_count++] = byte;
+    // If already receiving, check for message complete
+    if (dev->status_flags & KE_RX_IN_PROGRESS) {
 
-        /* See if the message is complete */
-        if( dev->rx_byte_count == dev->rx_buffer[ KE_PCKT_LEN_POS ] )
+    	// Verify the length data has been rx'd
+    	if(dev->rx_byte_count <= KE_PCKT_LEN_BYTE3_POS)
+    		return KE_OK;
+
+    	uint32_t len = ((uint32_t)dev->rx_buffer[KE_PCKT_LEN_BYTE0_POS] << 24) |
+    	               ((uint32_t)dev->rx_buffer[KE_PCKT_LEN_BYTE1_POS] << 16) |
+    	               ((uint32_t)dev->rx_buffer[KE_PCKT_LEN_BYTE2_POS] << 8)  |
+    	               ((uint32_t)dev->rx_buffer[KE_PCKT_LEN_BYTE3_POS]);
+
+        if (dev->rx_byte_count == len)
         {
-            /* Indicate an RX has ended */
             dev->status_flags &= ~KE_RX_IN_PROGRESS;
-
-            /* Increment the number of received RX messages */
             dev->diagnostic.rx_count++;
-
-            /* Set the Message complete flag */
             dev->status_flags |= KE_PCKT_CMPLT;
-
             return KE_PACKET_COMPLETE;
         }
 
-        /* This should not have happened, abort! */
-        else if ( dev->rx_byte_count > dev->rx_buffer[ KE_PCKT_LEN_POS ] )
-        {
-            /* Increment the number of aborted RX messages */
+        else if (dev->rx_byte_count > len) {
             dev->diagnostic.rx_abort_count++;
-
-            /* Indicate an RX has ended */
             dev->status_flags &= ~KE_RX_IN_PROGRESS;
-
-            /* Reset the UART buffer, something has gone horribly wrong */
-            memset( dev->rx_buffer, 0, KE_MAX_RX_PAYLOAD );
-
-            /* Reset the byte count */
             dev->rx_byte_count = 0;
+            return KE_BUFFER_FULL;
         }
+
         return KE_OK;
     }
 
-    else {
-        return KE_OUT_OF_SYNC;
-    }
-    return KE_ERROR;
+    return KE_OUT_OF_SYNC;
 }
 
 static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, uint32_t arg )
@@ -319,8 +299,11 @@ static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, ui
     /* Clear the buffer */
     flush_tx_buffer( dev );
 
-    /* Populate the Start of Line byte */
-    dev->tx_buffer[KE_PCKT_SOL_POS] = KE_SOL;
+    /* Populate the Start of Line bytes */
+    dev->tx_buffer[KE_PCKT_SOL_BYTE0_POS] = KE_SOL_BYTE0;
+    dev->tx_buffer[KE_PCKT_SOL_BYTE1_POS] = KE_SOL_BYTE1;
+    dev->tx_buffer[KE_PCKT_SOL_BYTE2_POS] = KE_SOL_BYTE2;
+    dev->tx_buffer[KE_PCKT_SOL_BYTE3_POS] = KE_SOL_BYTE3;
 
     /* Command */
     dev->tx_buffer[KE_PCKT_CMD_POS] = cmd;
@@ -445,15 +428,22 @@ static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, ui
             break;
     }
 
+    // Calculate CRC over the entire packet before adding CRC byte
+    uint8_t crc = crc8(dev->tx_buffer, dev->tx_byte_count);
+
     /* Packet is complete */
-    dev->tx_buffer[ dev->tx_byte_count++ ] = KE_EOL;
+    dev->tx_buffer[ dev->tx_byte_count++ ] = crc;
+
+    uint32_t len = dev->tx_byte_count;
 
     /* Populate the length */
-    dev->tx_buffer[KE_PCKT_LEN_POS] = dev->tx_byte_count;
+    dev->tx_buffer[KE_PCKT_LEN_BYTE0_POS] = (len >> 24) & 0xFF;  // Most significant byte
+    dev->tx_buffer[KE_PCKT_LEN_BYTE1_POS] = (len >> 16) & 0xFF;
+    dev->tx_buffer[KE_PCKT_LEN_BYTE2_POS] = (len >> 8)  & 0xFF;
+    dev->tx_buffer[KE_PCKT_LEN_BYTE3_POS] = (len >> 0)  & 0xFF;  // Least significant byte
 
     /* Send the packet */
     dev->init.transmit( dev->tx_buffer, dev->tx_byte_count );
-
 }
 
 void KE_tick( void )
@@ -506,4 +496,19 @@ static void clear_pid_entries( PKE_PACKET_MANAGER dev )
 
     /* Reset the byte count */
     dev->num_pids = 0;
+}
+
+// CRC-8 calculation function (poly 0x07, initial 0x00)
+static uint8_t crc8(const uint8_t *data, size_t len) {
+    uint8_t crc = 0x00;
+    for (size_t i = 0; i < len; i++) {
+        crc ^= data[i];
+        for (uint8_t bit = 0; bit < 8; bit++) {
+            if (crc & 0x80)
+                crc = (crc << 1) ^ 0x07;
+            else
+                crc <<= 1;
+        }
+    }
+    return crc;
 }
