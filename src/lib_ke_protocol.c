@@ -8,6 +8,25 @@
 #include "lib_ke_protocol.h"
 #include "string.h"
 #include "stdio.h"
+#define DEBUG_LIB_KE_PROTOCOL 1
+#if DEBUG_LIB_KE_PROTOCOL
+
+    #ifdef ESP_PLATFORM
+    #include "esp_log.h"
+    #define LOGI(tag, fmt, ...) ESP_LOGI(tag, fmt, ##__VA_ARGS__)
+    #define LOGE(tag, fmt, ...) ESP_LOGE(tag, fmt, ##__VA_ARGS__)
+    #else
+    // Define no-op or alternative logging for non-ESP platforms
+    #define LOGI(tag, fmt, ...)
+    #define LOGE(tag, fmt, ...)
+    #endif
+#else
+    // Define no-op
+    #define LOGI(tag, fmt, ...)
+    #define LOGE(tag, fmt, ...)
+#endif
+
+static const char *TAG = "KE";
 
 static uint32_t ke_tick = 0;
 
@@ -133,10 +152,12 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
             		dev->init.cooling( dev->rx_buffer[3] );
 			#endif
 
+            LOGI(TAG, "ACK Received");
             break;
 
         case KE_NACK:
             //TODO
+            LOGI(TAG, "NACK Received");
             break;
 
         case KE_POWER_CYCLE:
@@ -150,6 +171,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
             /* Indicate the system rebooted */
             dev->status_flags |= KE_SYSTEM_REBOOT;
 
+            LOGI(TAG, "Power Cylce Requested");
             break;
 
         case KE_SYS_READY:
@@ -160,6 +182,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
             /* ACK the successfully received message */
             dev->status_flags |= KE_SYSTEM_READY;
 
+            LOGI(TAG, "System Ready Received");
             break;
 
         case KE_FIRMWARE_REQ:
@@ -170,12 +193,14 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
 
             dev->status_flags &= ~KE_STREAM_ACTIVE;
 
+            LOGI(TAG, "Firmware Requested");
             break;
 
         case KE_HEARTBEAT:
 
             Generate_TX_Message( dev, KE_ACK, 0 );
 
+            LOGI(TAG, "Heartbeat Received");
             break;
 
         case KE_PID_STREAM_NEW:
@@ -216,9 +241,11 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
 
             Generate_TX_Message(  dev, KE_PID_STREAM_REPORT, 0 );
 
+            LOGI(TAG, "New PID Stream Requested");
             break;
 
         default:
+            LOGI(TAG, "Protocol Error on Receive");
             return KE_ERROR;
             break;
     }
@@ -235,6 +262,7 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
         dev->diagnostic.rx_abort_count++;
         dev->status_flags &= ~KE_RX_IN_PROGRESS;
         dev->rx_byte_count = 0;
+        LOGI(TAG, "Buffer Full");
         return KE_BUFFER_FULL;
     }
 
@@ -258,6 +286,7 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
             dev->status_flags |= KE_RX_IN_PROGRESS;
             dev->status_flags &= ~KE_PCKT_CMPLT;
 
+            LOGI(TAG, "Start of new message");
             return KE_START_OF_NEW_MSG;
         }
     }
@@ -279,6 +308,7 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
             dev->status_flags &= ~KE_RX_IN_PROGRESS;
             dev->diagnostic.rx_count++;
             dev->status_flags |= KE_PCKT_CMPLT;
+            LOGI(TAG, "Packet completed");
             return KE_PACKET_COMPLETE;
         }
 
@@ -286,7 +316,8 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
             dev->diagnostic.rx_abort_count++;
             dev->status_flags &= ~KE_RX_IN_PROGRESS;
             dev->rx_byte_count = 0;
-            return KE_OUT_OF_SYNC;;
+            LOGI(TAG, "Out of sync");
+            return KE_OUT_OF_SYNC;
         }
 
         return KE_OK;
@@ -318,30 +349,39 @@ void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, uint32_t 
     switch( cmd )
     {
         case KE_ACK:
+            LOGI(TAG, "ACK Sent");
             /* No additional data necessary */
             break;
         case KE_NACK:
+            LOGI(TAG, "NACK Sent");
             /* No additional data necessary */
             break;
         case KE_HEARTBEAT:
+            LOGI(TAG, "Heatbeat Sent");
             /* No additional data necessary */
             break;
         case KE_SYS_READY:
+            LOGI(TAG, "System Ready Sent");
             /* No additional data necessary */
             break;
         case KE_PID_STREAM_NEW:
+            LOGI(TAG, "New PID Stream Sent");
             /*TODO: Add support to be a host */
             break;
         case KE_PID_STREAM_ADD:
+            LOGI(TAG, "Add to PID Stream Sent");
             /*TODO: Add support to be a host */
             break;
         case KE_PID_STREAM_REMOVE:
+            LOGI(TAG, "Remove from PID Stream Sent");
             /*TODO: Add support to be a host */
             break;
         case KE_PID_STREAM_CLEAR:
+            LOGI(TAG, "Clear PID Stream Sent");
             /*TODO: Add support to be a host */
             break;
         case KE_PID_STREAM_REPORT:
+            LOGI(TAG, "PID Stream Report Sent");
             for( uint8_t i = 0; i < dev->num_pids; i++)
             {
                 float value = dev->stream[i]->pid_value;
@@ -375,56 +415,71 @@ void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, uint32_t 
             }
             break;
         case KE_LCD_ENABLE:
+            LOGI(TAG, "LCD Enable Sent");
             /*TODO: Add support to be a host */
             break;
         case KE_LCD_DISABLE:
+            LOGI(TAG, "LCD Disable Sent");
             /*TODO: Add support to be a host */
             break;
         case KE_LCD_POWER_CYCLE:
+            LOGI(TAG, "LCD Power Cylce Sent");
             /*TODO: Add support to be a host */
             break;
         case KE_LCD_FORCE_BRIGHTNESS:
+            LOGI(TAG, "LCD Force Brightness Sent");
             /*TODO: Add support to be a host */
             break;
         case KE_LCD_AUTO_BRIGHTNESS:
+            LOGI(TAG, "LCD Auto Brightness Sent");
             /*TODO: Add support to be a host */
             break;
         case KE_USB_ENABLE:
+            LOGI(TAG, "USB Enable Sent");
             /*TODO: Add support to be a host */
             break;
         case KE_USB_DISABLE:
+            LOGI(TAG, "USB Disable Sent");
             /*TODO: Add support to be a host */
             break;
         case KE_USB_POWER_CYCLE:
+            LOGI(TAG, "USB Power Cycle Sent");
             /*TODO: Add support to be a host */
             break;
         case KE_POWER_ENABLE:
+            LOGI(TAG, "Power Enable Sent");
             /*TODO: Add support to be a host */
             break;
         case KE_POWER_DISABLE:
+            LOGI(TAG, "Power Disable Sent");
             /* No additional data necessary */
             break;
         case KE_POWER_CYCLE:
+            LOGI(TAG, "Power Cylce Sent");
             /* No additional data necessary */
             break;
         case KE_FIRMWARE_REQ:
+            LOGI(TAG, "Firmware Request Sent");
             /*TODO: Add support to be a host */
             break;
         case KE_FIRMWARE_REPORT:
+            LOGI(TAG, "Firmware Report Sent");
             dev->tx_byte_count += snprintf( (char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_TX_PAYLOAD , "%02d.%02d.%02d",
                     dev->init.firmware_version_major ,
                     dev->init.firmware_version_minor,
                     dev->init.firmware_version_hotfix );
             break;
         case KE_BACKGROUND_SEND:
-
+            LOGI(TAG, "Background Image Sent");
         	break;
         case KE_BACKGROUND_RECEIVE:
-
+            LOGI(TAG, "Background Image Request Sent");
         	break;
         case KE_CONFIG_SEND:
+            LOGI(TAG, "Config Sent");
         	break;
         case KE_CONFIG_RECEIVE:
+            LOGI(TAG, "Config Request Sent");
         	break;
         default:
             break;
