@@ -246,7 +246,15 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
             break;
 
         case KE_CONFIG_SEND:
-            LOGI(TAG, "Config Received");
+            if (dev->init.json_to_config) {
+                dev->init.json_to_config((char*)&dev->rx_buffer[KE_PCKT_DATA_START_POS]);
+                Generate_TX_Message( dev, KE_ACK, 0 );
+                break;
+            } else {
+            	LOGI(TAG, "No json_to_config() registered.");
+            	Generate_TX_Message( dev, KE_NACK, 0 );
+            	break;
+            }
             break;
 
         case KE_CONFIG_REQUEST:

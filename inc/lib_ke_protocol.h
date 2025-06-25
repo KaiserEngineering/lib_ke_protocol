@@ -10,6 +10,7 @@
 
 #include "stdio.h"
 #include "stdint.h"
+#include "stdbool.h"
 #include "lib_pid.h"
 #include "ke_communicaton_protocol.h"
 
@@ -43,7 +44,8 @@
 
 typedef int (*TRANSMIT_KE_DATA)(uint8_t *data, uint8_t len);
 typedef void (*REQUEST_ACTIVE_COOLING)(uint8_t level);
-typedef uint32_t (*CONFIG_TO_JSON)(char *buffer, size_t buffer_size);
+typedef uint32_t (*KE_CONFIG_TO_JSON)(char *buffer, size_t buffer_size);
+typedef bool (*KE_JSON_TO_CONFIG)(const char *json_str);
 
 typedef enum _ke_status {
     KE_ERROR,
@@ -68,7 +70,8 @@ typedef struct _kep_init {
     clear_pid_request clear_pid;
     request_pid_data req_pid;
     REQUEST_ACTIVE_COOLING cooling;
-    CONFIG_TO_JSON config_to_json;
+    KE_CONFIG_TO_JSON config_to_json;
+    KE_JSON_TO_CONFIG json_to_config;
     uint8_t firmware_version_major;
     uint8_t firmware_version_minor;
     uint8_t firmware_version_hotfix;
