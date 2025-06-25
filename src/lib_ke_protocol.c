@@ -8,6 +8,8 @@
 #include "lib_ke_protocol.h"
 #include "string.h"
 #include "stdio.h"
+#include "ke_config.h"
+
 #define DEBUG_LIB_KE_PROTOCOL 1
 #if DEBUG_LIB_KE_PROTOCOL
 
@@ -244,6 +246,9 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
             LOGI(TAG, "New PID Stream Requested");
             break;
 
+        case KE_CONFIG_REQUEST:
+        	Generate_TX_Message(dev, KE_CONFIG_SEND, 0);
+
         default:
             LOGI(TAG, "Protocol Error on Receive");
             return KE_ERROR;
@@ -326,7 +331,7 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
     return KE_OK;
 }
 
-void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, uint32_t arg )
+void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args )
 {
     /* Clear the buffer */
     flush_tx_buffer( dev );
@@ -336,6 +341,7 @@ void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, uint32_t 
     dev->tx_buffer[KE_PCKT_SOL_BYTE1_POS] = KE_SOL_BYTE1;
     dev->tx_buffer[KE_PCKT_SOL_BYTE2_POS] = KE_SOL_BYTE2;
     dev->tx_buffer[KE_PCKT_SOL_BYTE3_POS] = KE_SOL_BYTE3;
+
 
     /* Command */
     dev->tx_buffer[KE_PCKT_CMD_POS] = cmd;
@@ -474,12 +480,15 @@ void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, uint32_t 
         	break;
         case KE_BACKGROUND_REQUEST:
             LOGI(TAG, "Background Image Request Sent");
+            /* No additional data necessary */
         	break;
         case KE_CONFIG_SEND:
+        	dev->tx_byte_count += config_to_json(&dev->tx_buffer[KE_PCKT_DATA_START_POS], KE_MAX_TX_PAYLOAD - KE_PCKT_DATA_START_POS - 1);
             LOGI(TAG, "Config Sent");
         	break;
         case KE_CONFIG_REQUEST:
             LOGI(TAG, "Config Request Sent");
+            /* No additional data necessary */
         	break;
         default:
             break;
