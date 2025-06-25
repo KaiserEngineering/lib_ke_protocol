@@ -8,7 +8,9 @@
 #include "lib_ke_protocol.h"
 #include "string.h"
 #include "stdio.h"
+#ifndef ESP_PLATFORM // TODO - There's a better way to do this
 #include "ke_config.h"
+#endif
 
 #define DEBUG_LIB_KE_PROTOCOL 1
 #if DEBUG_LIB_KE_PROTOCOL
@@ -244,6 +246,10 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
             Generate_TX_Message(  dev, KE_PID_STREAM_REPORT, 0 );
 
             LOGI(TAG, "New PID Stream Requested");
+            break;
+
+        case KE_CONFIG_SEND:
+            LOGI(TAG, "Config Received");
             break;
 
         case KE_CONFIG_REQUEST:
@@ -483,7 +489,9 @@ void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *arg
             /* No additional data necessary */
         	break;
         case KE_CONFIG_SEND:
-        	dev->tx_byte_count += config_to_json(&dev->tx_buffer[KE_PCKT_DATA_START_POS], KE_MAX_TX_PAYLOAD - KE_PCKT_DATA_START_POS - 1);
+            #ifndef ESP_PLATFORM // TODO - There's a better way to do this
+            dev->tx_byte_count += config_to_json(&dev->tx_buffer[KE_PCKT_DATA_START_POS], KE_MAX_TX_PAYLOAD - KE_PCKT_DATA_START_POS - 1);
+            #endif
             LOGI(TAG, "Config Sent");
         	break;
         case KE_CONFIG_REQUEST:
