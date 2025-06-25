@@ -41,7 +41,7 @@
 #define KE_TIMEOUT                   200
 #define MAX_RETRIES                  25
 
-typedef int (*TRANSMIT_DATA)(uint8_t *data, uint8_t len);
+typedef int (*TRANSMIT_KE_DATA)(uint8_t *data, uint8_t len);
 typedef void (*REQUEST_ACTIVE_COOLING)(uint8_t level);
 
 typedef enum _ke_status {
@@ -63,7 +63,7 @@ typedef enum _ke_dev_role {
 
 typedef struct _kep_init {
 	KE_DEV_ROLE role;
-    TRANSMIT_DATA transmit;
+	TRANSMIT_KE_DATA transmit;
     clear_pid_request clear_pid;
     request_pid_data req_pid;
     REQUEST_ACTIVE_COOLING cooling;
