@@ -472,13 +472,13 @@ void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, uint32_t 
         case KE_BACKGROUND_SEND:
             LOGI(TAG, "Background Image Sent");
         	break;
-        case KE_BACKGROUND_RECEIVE:
+        case KE_BACKGROUND_REQUEST:
             LOGI(TAG, "Background Image Request Sent");
         	break;
         case KE_CONFIG_SEND:
             LOGI(TAG, "Config Sent");
         	break;
-        case KE_CONFIG_RECEIVE:
+        case KE_CONFIG_REQUEST:
             LOGI(TAG, "Config Request Sent");
         	break;
         default:
