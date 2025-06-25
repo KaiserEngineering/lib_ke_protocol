@@ -110,6 +110,8 @@ uint32_t get_KE_rx_count( PKE_PACKET_MANAGER dev );
 uint32_t get_KE_rx_abort_count( PKE_PACKET_MANAGER dev );
 uint32_t get_KE_tx_abort_count( PKE_PACKET_MANAGER dev );
 
+void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, uint32_t arg );
+
 
 
 #endif /* LIB_KE_PROTOCOL_H_ */

@@ -12,7 +12,6 @@
 static uint32_t ke_tick = 0;
 
 static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev );
-static void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, uint32_t arg );
 static void clear_diagnostics( PKE_PACKET_MANAGER dev );
 static void flush_tx_buffer( PKE_PACKET_MANAGER dev );
 static void flush_rx_buffer( PKE_PACKET_MANAGER dev );
@@ -296,7 +295,7 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
     return KE_OK;
 }
 
-static void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, uint32_t arg )
+void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, uint32_t arg )
 {
     /* Clear the buffer */
     flush_tx_buffer( dev );
