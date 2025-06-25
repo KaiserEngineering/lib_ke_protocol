@@ -8,9 +8,6 @@
 #include "lib_ke_protocol.h"
 #include "string.h"
 #include "stdio.h"
-#ifndef ESP_PLATFORM // TODO - There's a better way to do this
-#include "ke_config.h"
-#endif
 
 #define DEBUG_LIB_KE_PROTOCOL 1
 #if DEBUG_LIB_KE_PROTOCOL
@@ -489,9 +486,11 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
             /* No additional data necessary */
         	break;
         case KE_CONFIG_SEND:
-            #ifndef ESP_PLATFORM // TODO - There's a better way to do this
-            dev->tx_byte_count += config_to_json(&dev->tx_buffer[KE_PCKT_DATA_START_POS], KE_MAX_TX_PAYLOAD - KE_PCKT_DATA_START_POS - 1);
-            #endif
+            if (dev->init.config_to_json) {
+                dev->tx_byte_count += dev->init.config_to_json((char*)&dev->tx_buffer[KE_PCKT_DATA_START_POS], KE_MAX_TX_PAYLOAD - KE_PCKT_DATA_START_POS - 1);
+            } else {
+            	LOGI(TAG, "No config_to_json() registered.");
+            }
             LOGI(TAG, "Config Sent");
         	break;
         case KE_CONFIG_REQUEST:

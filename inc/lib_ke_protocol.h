@@ -43,6 +43,7 @@
 
 typedef int (*TRANSMIT_KE_DATA)(uint8_t *data, uint8_t len);
 typedef void (*REQUEST_ACTIVE_COOLING)(uint8_t level);
+typedef uint32_t (*CONFIG_TO_JSON)(char *buffer, size_t buffer_size);
 
 typedef enum _ke_status {
     KE_ERROR,
@@ -67,6 +68,7 @@ typedef struct _kep_init {
     clear_pid_request clear_pid;
     request_pid_data req_pid;
     REQUEST_ACTIVE_COOLING cooling;
+    CONFIG_TO_JSON config_to_json;
     uint8_t firmware_version_major;
     uint8_t firmware_version_minor;
     uint8_t firmware_version_hotfix;
