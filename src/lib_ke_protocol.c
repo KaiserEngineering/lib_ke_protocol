@@ -331,7 +331,7 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
     return KE_OK;
 }
 
-void Generate_TX_Message(  PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args )
+void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args )
 {
     /* Clear the buffer */
     flush_tx_buffer( dev );
