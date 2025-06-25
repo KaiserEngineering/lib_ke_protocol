@@ -14,10 +14,10 @@
 #include "ke_communicaton_protocol.h"
 
 #ifndef KE_MAX_TX_PAYLOAD
-#define KE_MAX_TX_PAYLOAD             0xFFFF + 0xF
+#define KE_MAX_TX_PAYLOAD             0x4000
 #endif
 #ifndef KE_MAX_RX_PAYLOAD
-#define KE_MAX_RX_PAYLOAD             819200 + 16
+#define KE_MAX_RX_PAYLOAD             0x4000
 #endif
 #define KE_MAX_PIDS                   0xF
 #define KE_SOL_BYTE0                  0xDE
