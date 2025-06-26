@@ -39,6 +39,18 @@ static void clear_pid_entries( PKE_PACKET_MANAGER dev );
 static void reset_idle_time( PKE_PACKET_MANAGER dev );
 static uint8_t crc8(const uint8_t *data, size_t len);
 
+static inline void KE_set_flag(PKE_PACKET_MANAGER dev, uint32_t flag) {
+    dev->status_flags |= flag;
+}
+
+static inline void KE_clear_flag(PKE_PACKET_MANAGER dev, uint32_t flag) {
+    dev->status_flags &= ~flag;
+}
+
+static inline bool KE_get_flag(PKE_PACKET_MANAGER dev, uint32_t flag) {
+    return (dev->status_flags & flag) != 0;
+}
+
 uint32_t get_KE_rx_count( PKE_PACKET_MANAGER dev )
 {
     return dev->diagnostic.rx_count;
@@ -74,28 +86,28 @@ KE_STATUS KE_Service( PKE_PACKET_MANAGER dev )
      * Packet has been received and is ready for
      * processing.
      *********************************************************/
-    if( dev->status_flags & KE_PCKT_CMPLT )
+    if( KE_get_flag(dev, KE_PCKT_CMPLT) )
     {
         KE_Process_Packet(dev);
 
         dev->num_retries = 0;
 
-        dev->status_flags &= ~KE_PCKT_CMPLT;
+        KE_clear_flag(dev, KE_PCKT_CMPLT);
 
         reset_idle_time( dev );
     }
 
     /* See if the stream is active */
-    else if( dev->status_flags & KE_STREAM_ACTIVE )
+    else if( KE_get_flag(dev, KE_STREAM_ACTIVE) )
     {
         /* If so, see if a packet has been sent and is awaiting acknowledgment */
-        if( dev->status_flags & KE_PENDING_ACK )
+        if( KE_get_flag(dev, KE_PENDING_ACK) )
         {
             /* Verify the message hasn't timed out */
             if( ke_tick > (dev->ke_time + KE_TIMEOUT) )
             {
                 /* If so, clear the pending ack flag in order to re-send the data */
-                dev->status_flags &= ~KE_PENDING_ACK;
+                KE_clear_flag(dev, KE_PENDING_ACK);
 
                 /* Increment the consecutive retry count */
                 dev->num_retries++;
@@ -113,25 +125,25 @@ KE_STATUS KE_Service( PKE_PACKET_MANAGER dev )
 
             reset_idle_time( dev );
 
-            dev->status_flags |= KE_NEW_DATA;
+            KE_set_flag(dev, KE_NEW_DATA);
 
-            if( dev->status_flags & KE_NEW_DATA )
+            if( KE_get_flag(dev, KE_NEW_DATA) )
             {
                 /* There are no pending message, send the new data */
                 Generate_TX_Message(dev, KE_PID_STREAM_REPORT, 0);
 
-                dev->status_flags |= KE_PENDING_ACK;
+                KE_set_flag(dev, KE_PENDING_ACK);
             }
         }
     }
 
-    if( dev->status_flags & KE_PID_UPDATED )
+    if( KE_get_flag(dev, KE_PID_UPDATED) )
     {
-        dev->status_flags &= ~KE_PID_UPDATED;
+        KE_clear_flag(dev, KE_PID_UPDATED);
         return KE_PID_REQ_UPDATE;
-    } else if ( dev->status_flags & KE_SYSTEM_REBOOT )
+    } else if ( KE_get_flag(dev, KE_SYSTEM_REBOOT) )
     {
-        dev->status_flags &= ~KE_SYSTEM_REBOOT;
+        KE_clear_flag(dev, KE_SYSTEM_REBOOT);
         return KE_REBOOT;
     } else {
         return KE_OK;
@@ -144,7 +156,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
     {
         case KE_ACK:
             /* ACK received, clear the pending ACK flag */
-            dev->status_flags &= ~KE_PENDING_ACK;
+            KE_clear_flag(dev, KE_PENDING_ACK);
 
 			#if FAN_CTRL_ACTIVE
             /* The active cooling byte is optional in an ACK */
@@ -170,7 +182,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
             KE_Initialize( dev );
 
             /* Indicate the system rebooted */
-            dev->status_flags |= KE_SYSTEM_REBOOT;
+            KE_set_flag(dev, KE_SYSTEM_REBOOT);
 
             LOGI(TAG, "Power Cylce Requested");
             break;
@@ -181,7 +193,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
             Generate_TX_Message( dev, KE_ACK, 0 );
 
             /* ACK the successfully received message */
-            dev->status_flags |= KE_SYSTEM_READY;
+            KE_set_flag(dev, KE_SYSTEM_READY);
 
             LOGI(TAG, "System Ready Received");
             break;
@@ -192,7 +204,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
             Generate_TX_Message( dev, KE_FIRMWARE_REPORT, 0 );
 
 
-            dev->status_flags &= ~KE_STREAM_ACTIVE;
+            KE_clear_flag(dev, KE_STREAM_ACTIVE);
 
             LOGI(TAG, "Firmware Requested");
             break;
@@ -233,11 +245,11 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
                     	dev->stream[i] = dev->init.req_pid( &tmp_pid );
                 }
 
-                dev->status_flags |= KE_STREAM_ACTIVE;
+                KE_set_flag(dev, KE_STREAM_ACTIVE);
 
-                dev->status_flags |= KE_PID_UPDATED;
+                KE_set_flag(dev, KE_PID_UPDATED);
 
-                dev->status_flags &= ~KE_PENDING_ACK;
+                KE_clear_flag(dev, KE_PENDING_ACK);
             }
 
             Generate_TX_Message(  dev, KE_PID_STREAM_REPORT, 0 );
@@ -276,7 +288,7 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
         dev->rx_buffer[dev->rx_byte_count++] = byte;
     } else {
         dev->diagnostic.rx_abort_count++;
-        dev->status_flags &= ~KE_RX_IN_PROGRESS;
+        KE_clear_flag(dev, KE_RX_IN_PROGRESS);
         dev->rx_byte_count = 0;
         LOGI(TAG, "Buffer Full");
         return KE_BUFFER_FULL;
@@ -291,7 +303,7 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
             dev->rx_buffer[i + 3] == KE_SOL_BYTE3)
         {
             // Found SOL — restart buffer from this point
-            if (dev->status_flags & KE_RX_IN_PROGRESS) {
+            if (KE_get_flag(dev, KE_RX_IN_PROGRESS) ) {
                 dev->diagnostic.rx_abort_count++;
             }
 
@@ -299,8 +311,8 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
             memmove(dev->rx_buffer, &dev->rx_buffer[i], dev->rx_byte_count - i);
             dev->rx_byte_count = dev->rx_byte_count - i;
 
-            dev->status_flags |= KE_RX_IN_PROGRESS;
-            dev->status_flags &= ~KE_PCKT_CMPLT;
+            KE_set_flag(dev, KE_RX_IN_PROGRESS);
+            KE_clear_flag(dev, KE_PCKT_CMPLT);
 
             LOGI(TAG, "Start of new message");
             return KE_START_OF_NEW_MSG;
@@ -308,7 +320,7 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
     }
 
     // If already receiving, check for message complete
-    if (dev->status_flags & KE_RX_IN_PROGRESS) {
+    if (KE_get_flag(dev, KE_RX_IN_PROGRESS) ) {
 
     	// Verify the length data has been rx'd
     	if(dev->rx_byte_count <= KE_PCKT_LEN_BYTE3_POS)
@@ -321,16 +333,16 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
 
         if (dev->rx_byte_count == len)
         {
-            dev->status_flags &= ~KE_RX_IN_PROGRESS;
+            KE_clear_flag(dev, KE_RX_IN_PROGRESS);
             dev->diagnostic.rx_count++;
-            dev->status_flags |= KE_PCKT_CMPLT;
+            KE_set_flag(dev, KE_PCKT_CMPLT);
             LOGI(TAG, "Packet completed");
             return KE_PACKET_COMPLETE;
         }
 
         else if (dev->rx_byte_count > len) {
             dev->diagnostic.rx_abort_count++;
-            dev->status_flags &= ~KE_RX_IN_PROGRESS;
+            KE_clear_flag(dev, KE_RX_IN_PROGRESS);
             dev->rx_byte_count = 0;
             LOGI(TAG, "Out of sync");
             return KE_OUT_OF_SYNC;
