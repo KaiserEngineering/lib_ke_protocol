@@ -131,8 +131,6 @@ KE_STATUS KE_Service( PKE_PACKET_MANAGER dev )
             {
                 /* There are no pending message, send the new data */
                 Generate_TX_Message(dev, KE_PID_STREAM_REPORT, 0);
-
-                KE_set_flag(dev, KE_PENDING_ACK);
             }
         }
     }
@@ -445,6 +443,8 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
                             dev->tx_buffer[dev->tx_byte_count++] = ',';
                 }
             }
+            // An ACK is needed.
+            KE_set_flag(dev, KE_PENDING_ACK);
             break;
         case KE_LCD_ENABLE:
             LOGI(TAG, "LCD Enable Sent");
@@ -515,6 +515,9 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
             	LOGI(TAG, "No config_to_json() registered.");
             }
             LOGI(TAG, "Config Sent");
+            
+            // An ACK is needed.
+            KE_set_flag(dev, KE_PENDING_ACK);
         	break;
         case KE_CONFIG_REQUEST:
             LOGI(TAG, "Config Request Sent");
@@ -540,6 +543,25 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
 
     /* Send the packet */
     dev->init.transmit( dev->tx_buffer, dev->tx_byte_count );
+}
+
+void KE_wait_for_response( PKE_PACKET_MANAGER dev, uint32_t timeout )
+{
+    uint32_t start_t = ke_tick;
+
+    // Non-blocking when timeout is 0
+    if( timeout == 0 ) {
+        return;
+    }
+    
+    // Wait for a response
+    while ( ke_tick < (start_t + timeout) ) {
+        KE_Service(dev);
+
+        // Exit once an ACK has been recieved
+        if ( KE_get_flag(dev, KE_PENDING_ACK) )
+            return;
+    }
 }
 
 void KE_tick( void )
