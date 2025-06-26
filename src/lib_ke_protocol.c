@@ -259,6 +259,8 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
 
         case KE_CONFIG_SEND:
             if (dev->init.json_to_config) {
+                // Overwrite the CRC with a NULL terminator for the string. (Message has already been verified) 
+                dev->rx_buffer[dev->rx_byte_count-1] = '\0';
                 dev->init.json_to_config((char*)&dev->rx_buffer[KE_PCKT_DATA_START_POS]);
                 Generate_TX_Message( dev, KE_ACK, 0 );
                 break;
