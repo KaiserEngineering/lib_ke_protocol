@@ -271,6 +271,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
 
         case KE_CONFIG_REQUEST:
         	Generate_TX_Message(dev, KE_CONFIG_SEND, 0);
+            break;
 
         default:
             LOGI(TAG, "Protocol Error on Receive");
