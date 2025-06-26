@@ -32,6 +32,8 @@ typedef enum KE_CP_OP_CODES {
 	KE_BACKGROUND_REQUEST      = (uint8_t)0x20,    /* Request background image                     */
 	KE_CONFIG_SEND             = (uint8_t)0x21,    /* Send JSON configuration                      */
 	KE_CONFIG_REQUEST          = (uint8_t)0x22,    /* Request JSON configuration                   */
+	KE_OPTION_LIST_SEND        = (uint8_t)0x23,    /* Send JSON Option list                        */
+	KE_OPTION_LIST_REQUEST     = (uint8_t)0x24,    /* Request JSON Option list                     */
 } KE_CP_OP_CODES;
 
 #endif /* KE_COMMUNICATON_PROTOCOL_H_ */

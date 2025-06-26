@@ -273,6 +273,24 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
         	Generate_TX_Message(dev, KE_CONFIG_SEND, 0);
             break;
 
+        case KE_OPTION_LIST_SEND:
+            if (dev->init.json_to_options) {
+                // Overwrite the CRC with a NULL terminator for the string. (Message has already been verified)
+                dev->rx_buffer[dev->rx_byte_count-1] = '\0';
+                dev->init.json_to_options((char*)&dev->rx_buffer[KE_PCKT_DATA_START_POS]);
+                Generate_TX_Message( dev, KE_ACK, 0 );
+                break;
+            } else {
+            	LOGI(TAG, "No json_to_config() registered.");
+            	Generate_TX_Message( dev, KE_NACK, 0 );
+            	break;
+            }
+        	break;
+
+        case KE_OPTION_LIST_REQUEST:
+        	Generate_TX_Message(dev, KE_OPTION_LIST_SEND, 0);
+        	break;
+
         default:
             LOGI(TAG, "Protocol Error on Receive");
             return KE_ERROR;
@@ -521,6 +539,21 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
         	break;
         case KE_CONFIG_REQUEST:
             LOGI(TAG, "Config Request Sent");
+            /* No additional data necessary */
+        	break;
+        case KE_OPTION_LIST_SEND:
+            if (dev->init.options_to_json) {
+                dev->tx_byte_count += dev->init.options_to_json((char*)&dev->tx_buffer[KE_PCKT_DATA_START_POS], KE_MAX_TX_PAYLOAD - KE_PCKT_DATA_START_POS - 1);
+            } else {
+            	LOGI(TAG, "No options_to_json() registered.");
+            }
+            LOGI(TAG, "Option List Sent");
+
+            // An ACK is needed.
+            KE_set_flag(dev, KE_PENDING_ACK);
+        	break;
+        case KE_OPTION_LIST_REQUEST:
+            LOGI(TAG, "Option list Sent");
             /* No additional data necessary */
         	break;
         default:
