@@ -44,7 +44,7 @@
 
 typedef int (*TRANSMIT_KE_DATA)(uint8_t *data, uint8_t len);
 typedef void (*REQUEST_ACTIVE_COOLING)(uint8_t level);
-typedef uint32_t (*KE_STRING_TO_JSON)(char *buffer, size_t buffer_size);
+typedef uint32_t (*KE_STRING_TO_JSON)(char *buffer, uin32_t buffer_size);
 typedef bool (*KE_JSON_TO_FUNCTION)(const char *json_str);
 
 typedef enum _ke_status {
