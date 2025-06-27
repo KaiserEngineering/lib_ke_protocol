@@ -553,7 +553,7 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
             KE_set_flag(dev, KE_PENDING_ACK);
         	break;
         case KE_OPTION_LIST_REQUEST:
-            LOGI(TAG, "Option list Sent");
+            LOGI(TAG, "Option list Request Sent");
             /* No additional data necessary */
         	break;
         default:
