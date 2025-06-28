@@ -594,11 +594,11 @@ void KE_wait_for_response( PKE_PACKET_MANAGER dev, uint32_t timeout )
     }
     
     // Wait for a response
-    while ( ke_tick < (start_t + timeout) ) {
+    while ((ke_tick - start_t) < timeout) {
         KE_Service(dev);
 
-        // Exit once an response has been received
-        if ( KE_get_flag(dev, KE_PENDING_RESPONSE) )
+        // Exit once a response has been received
+        if ( KE_get_flag(dev, KE_PENDING_RESPONSE) == 0 )
             return;
     }
 }
