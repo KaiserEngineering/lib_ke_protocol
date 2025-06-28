@@ -539,6 +539,9 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
         	break;
         case KE_CONFIG_REQUEST:
             LOGI(TAG, "Config Request Sent");
+
+            // A response is needed.
+            KE_set_flag(dev, KE_PENDING_RESPONSE);
             /* No additional data necessary */
         	break;
         case KE_OPTION_LIST_SEND:
@@ -554,6 +557,9 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
         	break;
         case KE_OPTION_LIST_REQUEST:
             LOGI(TAG, "Option list Request Sent");
+
+            // A response is needed.
+            KE_set_flag(dev, KE_PENDING_RESPONSE);
             /* No additional data necessary */
         	break;
         default:
