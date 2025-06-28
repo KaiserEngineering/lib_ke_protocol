@@ -261,12 +261,13 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
                 dev->rx_buffer[dev->rx_byte_count-1] = '\0';
                 dev->init.json_to_config((char*)&dev->rx_buffer[KE_PCKT_DATA_START_POS]);
                 Generate_TX_Message( dev, KE_ACK, 0 );
-                break;
             } else {
             	LOGI(TAG, "No json_to_config() registered.");
             	Generate_TX_Message( dev, KE_NACK, 0 );
-            	break;
             }
+
+            // KE_CONFIG_REQUEST has been responded to
+            KE_clear_flag(dev, KE_PENDING_RESPONSE);
             break;
 
         case KE_CONFIG_REQUEST:
@@ -279,12 +280,13 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
                 dev->rx_buffer[dev->rx_byte_count-1] = '\0';
                 dev->init.json_to_options((char*)&dev->rx_buffer[KE_PCKT_DATA_START_POS]);
                 Generate_TX_Message( dev, KE_ACK, 0 );
-                break;
             } else {
             	LOGI(TAG, "No json_to_config() registered.");
             	Generate_TX_Message( dev, KE_NACK, 0 );
-            	break;
             }
+
+            // KE_OPTION_LIST_REQUEST has been responded to
+            KE_clear_flag(dev, KE_PENDING_RESPONSE);
         	break;
 
         case KE_OPTION_LIST_REQUEST:
@@ -367,9 +369,14 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
             return KE_OUT_OF_SYNC;
         }
 
+        //int a = dev->rx_byte_count;
+        //int b = len;
+
+        //LOGI(TAG, "%d/%d", a, b);
+
         return KE_OK;
     }
-
+    
     return KE_OK;
 }
 
@@ -590,6 +597,7 @@ void KE_wait_for_response( PKE_PACKET_MANAGER dev, uint32_t timeout )
 
     // Non-blocking when timeout is 0
     if( timeout == 0 ) {
+        LOGI(TAG, "No timeout, immediately continue");
         return;
     }
     
@@ -601,6 +609,8 @@ void KE_wait_for_response( PKE_PACKET_MANAGER dev, uint32_t timeout )
         if ( KE_get_flag(dev, KE_PENDING_RESPONSE) == 0 )
             return;
     }
+
+    LOGI(TAG, "Timeout at %lums, no response received", (unsigned long)ke_tick);
 }
 
 void KE_tick( void )
