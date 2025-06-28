@@ -93,14 +93,14 @@ typedef struct _ke_packet_manager {
     KEP_DIAGNOSTICS diagnostic;
     uint32_t num_retries;
     uint16_t status_flags;
-        #define KE_RX_IN_PROGRESS  (1 << 0)
-        #define KE_PCKT_CMPLT      (1 << 1)
-        #define KE_PENDING_ACK     (1 << 2)
-        #define KE_SYSTEM_READY    (1 << 3)
-        #define KE_STREAM_ACTIVE   (1 << 4)
-        #define KE_PID_UPDATED     (1 << 5)
-        #define KE_SYSTEM_REBOOT   (1 << 6)
-        #define KE_NEW_DATA        (1 << 7)
+        #define KE_RX_IN_PROGRESS      (1 << 0)
+        #define KE_PCKT_CMPLT          (1 << 1)
+        #define KE_PENDING_RESPONSE    (1 << 2)
+        #define KE_SYSTEM_READY        (1 << 3)
+        #define KE_STREAM_ACTIVE       (1 << 4)
+        #define KE_PID_UPDATED         (1 << 5)
+        #define KE_SYSTEM_REBOOT       (1 << 6)
+        #define KE_NEW_DATA            (1 << 7)
     uint8_t tx_buffer[KE_MAX_TX_PAYLOAD];
     uint32_t tx_byte_count;
     uint8_t rx_buffer[KE_MAX_RX_PAYLOAD];

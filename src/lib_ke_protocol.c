@@ -100,14 +100,14 @@ KE_STATUS KE_Service( PKE_PACKET_MANAGER dev )
     /* See if the stream is active */
     else if( KE_get_flag(dev, KE_STREAM_ACTIVE) )
     {
-        /* If so, see if a packet has been sent and is awaiting acknowledgment */
-        if( KE_get_flag(dev, KE_PENDING_ACK) )
+        /* If so, see if a packet has been sent and is awaiting response */
+        if( KE_get_flag(dev, KE_PENDING_RESPONSE) )
         {
             /* Verify the message hasn't timed out */
             if( ke_tick > (dev->ke_time + KE_TIMEOUT) )
             {
-                /* If so, clear the pending ack flag in order to re-send the data */
-                KE_clear_flag(dev, KE_PENDING_ACK);
+                /* If so, clear the pending response flag in order to re-send the data */
+                KE_clear_flag(dev, KE_PENDING_RESPONSE);
 
                 /* Increment the consecutive retry count */
                 dev->num_retries++;
@@ -153,8 +153,8 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
     switch( dev->rx_buffer[KE_PCKT_CMD_POS] )
     {
         case KE_ACK:
-            /* ACK received, clear the pending ACK flag */
-            KE_clear_flag(dev, KE_PENDING_ACK);
+            /* response received, clear the pending response flag */
+            KE_clear_flag(dev, KE_PENDING_RESPONSE);
 
 			#if FAN_CTRL_ACTIVE
             /* The active cooling byte is optional in an ACK */
@@ -247,7 +247,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
 
                 KE_set_flag(dev, KE_PID_UPDATED);
 
-                KE_clear_flag(dev, KE_PENDING_ACK);
+                KE_clear_flag(dev, KE_PENDING_RESPONSE);
             }
 
             Generate_TX_Message(  dev, KE_PID_STREAM_REPORT, 0 );
@@ -461,8 +461,8 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
                             dev->tx_buffer[dev->tx_byte_count++] = ',';
                 }
             }
-            // An ACK is needed.
-            KE_set_flag(dev, KE_PENDING_ACK);
+            // A response is needed.
+            KE_set_flag(dev, KE_PENDING_RESPONSE);
             break;
         case KE_LCD_ENABLE:
             LOGI(TAG, "LCD Enable Sent");
@@ -534,8 +534,8 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
             }
             LOGI(TAG, "Config Sent");
             
-            // An ACK is needed.
-            KE_set_flag(dev, KE_PENDING_ACK);
+            // A response is needed.
+            KE_set_flag(dev, KE_PENDING_RESPONSE);
         	break;
         case KE_CONFIG_REQUEST:
             LOGI(TAG, "Config Request Sent");
@@ -549,8 +549,8 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
             }
             LOGI(TAG, "Option List Sent");
 
-            // An ACK is needed.
-            KE_set_flag(dev, KE_PENDING_ACK);
+            // A response is needed.
+            KE_set_flag(dev, KE_PENDING_RESPONSE);
         	break;
         case KE_OPTION_LIST_REQUEST:
             LOGI(TAG, "Option list Request Sent");
@@ -591,8 +591,8 @@ void KE_wait_for_response( PKE_PACKET_MANAGER dev, uint32_t timeout )
     while ( ke_tick < (start_t + timeout) ) {
         KE_Service(dev);
 
-        // Exit once an ACK has been recieved
-        if ( KE_get_flag(dev, KE_PENDING_ACK) )
+        // Exit once an response has been received
+        if ( KE_get_flag(dev, KE_PENDING_RESPONSE) )
             return;
     }
 }
