@@ -40,6 +40,8 @@ typedef int (*TRANSMIT_KE_DATA)(uint8_t *data, uint32_t len);
 typedef void (*REQUEST_ACTIVE_COOLING)(uint8_t level);
 typedef uint32_t (*KE_STRING_TO_JSON)(char *buffer, uint32_t buffer_size);
 typedef bool (*KE_JSON_TO_FUNCTION)(const char *json_str);
+typedef uint32_t (*PNG_TO_RGBA)(char *buffer, uint32_t buffer_size, uint8_t background_idx);
+typedef bool (*SAVE_RGBA)(char *buffer, uint32_t buffer_size, uint8_t background_idx);
 
 typedef enum _ke_status {
     KE_ERROR,
@@ -68,6 +70,8 @@ typedef struct _kep_init {
     KE_JSON_TO_FUNCTION json_to_config;
     KE_STRING_TO_JSON options_to_json;
     KE_JSON_TO_FUNCTION json_to_options;
+    PNG_TO_RGBA png_to_rgba;
+    SAVE_RGBA save_rgba;
     uint8_t firmware_version_major;
     uint8_t firmware_version_minor;
     uint8_t firmware_version_hotfix;

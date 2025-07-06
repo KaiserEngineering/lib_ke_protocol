@@ -527,7 +527,19 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
                     dev->init.firmware_version_hotfix );
             break;
         case KE_BACKGROUND_SEND:
-            LOGI(TAG, "Background Image Sent");
+            if (dev->init.png_to_rgba) {
+
+                // Cast and dereference
+                uint8_t background_idx = *((uint8_t *)args);
+
+                // First byte is the index
+                dev->tx_buffer[dev->tx_byte_count++] = background_idx;
+
+                // Convert the png to rgba data
+                dev->tx_byte_count += dev->init.png_to_rgba((char*)&dev->tx_buffer[dev->tx_byte_count], dev->tx_buffer_size - dev->tx_byte_count - 1, background_idx);
+            } else {
+            	LOGI(TAG, "No png_to_rgba() registered.");
+            }
         	break;
         case KE_BACKGROUND_REQUEST:
             LOGI(TAG, "Background Image Request Sent");
