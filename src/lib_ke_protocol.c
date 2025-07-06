@@ -16,6 +16,7 @@
     #include "esp_log.h"
     #define LOGI(tag, fmt, ...) ESP_LOGI(tag, fmt, ##__VA_ARGS__)
     #define LOGE(tag, fmt, ...) ESP_LOGE(tag, fmt, ##__VA_ARGS__)
+	static const char *TAG = "KE";
     #else
     // Define no-op or alternative logging for non-ESP platforms
     #define LOGI(tag, fmt, ...)
@@ -26,8 +27,6 @@
     #define LOGI(tag, fmt, ...)
     #define LOGE(tag, fmt, ...)
 #endif
-
-static const char *TAG = "KE";
 
 static uint32_t ke_tick = 0;
 
@@ -279,7 +278,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
                                           ((uint32_t)dev->rx_buffer[KE_PCKT_DATA_START_POS+2] << 16) |
                                           ((uint32_t)dev->rx_buffer[KE_PCKT_DATA_START_POS+3] << 8)  |
                                           ((uint32_t)dev->rx_buffer[KE_PCKT_DATA_START_POS+4]);
-                
+
                 dev->init.receive_rgba_crc(background_idx, background_crc);
             } else {
             	LOGI(TAG, "No receive_rgba_crc() registered.");
@@ -287,6 +286,11 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
 
             // KE_BACKGROUND_CRC_REQUEST has been responded to
             KE_clear_flag(dev, KE_PENDING_RESPONSE);
+            break;
+
+        case KE_BACKGROUND_CRC_REQUEST:
+        	uint8_t idx = dev->rx_buffer[KE_PCKT_DATA_START_POS];
+        	Generate_TX_Message(dev, KE_BACKGROUND_CRC_SEND, &idx);
             break;
 
         case KE_CONFIG_SEND:
