@@ -548,6 +548,9 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
 
                 // Convert the png to rgba data
                 dev->tx_byte_count += dev->init.png_to_rgba((char*)&dev->tx_buffer[dev->tx_byte_count], dev->tx_buffer_size - dev->tx_byte_count - 1, background_idx);
+
+                // A response is needed.
+                KE_set_flag(dev, KE_PENDING_RESPONSE);
             } else {
             	LOGI(TAG, "No png_to_rgba() registered.");
             }
