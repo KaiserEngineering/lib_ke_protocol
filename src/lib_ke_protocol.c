@@ -373,7 +373,7 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
             KE_set_flag(dev, KE_RX_IN_PROGRESS);
             KE_clear_flag(dev, KE_PCKT_CMPLT);
 
-            LOGI(TAG, "Start of new message");
+            //LOGI(TAG, "Start of new message");
             return KE_START_OF_NEW_MSG;
         }
     }
@@ -395,7 +395,7 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
             KE_clear_flag(dev, KE_RX_IN_PROGRESS);
             dev->diagnostic.rx_count++;
             KE_set_flag(dev, KE_PCKT_CMPLT);
-            LOGI(TAG, "Packet completed");
+            //LOGI(TAG, "Packet completed");
             return KE_PACKET_COMPLETE;
         }
 
