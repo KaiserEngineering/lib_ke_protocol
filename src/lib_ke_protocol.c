@@ -380,11 +380,6 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
             return KE_OUT_OF_SYNC;
         }
 
-        //int a = dev->rx_byte_count;
-        //int b = len;
-
-        //LOGI(TAG, "%d/%d", a, b);
-
         return KE_OK;
     }
     
