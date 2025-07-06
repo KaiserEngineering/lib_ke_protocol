@@ -255,6 +255,17 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
             LOGI(TAG, "New PID Stream Requested");
             break;
 
+        case KE_BACKGROUND_SEND:
+        	if (dev->init.save_rgba) {
+        		uint8_t idx = dev->rx_buffer[KE_PCKT_DATA_START_POS];
+        		dev->init.save_rgba((char*)&dev->rx_buffer[KE_PCKT_DATA_START_POS+1], UI_HOR_RES * UI_VER_RES * UI_BYTES_PER_PIXEL, idx);
+        		Generate_TX_Message( dev, KE_ACK, 0 );
+        	} else {
+            	LOGI(TAG, "No save_rgba() registered.");
+            	Generate_TX_Message( dev, KE_NACK, 0 );
+        	}
+        	break;
+
         case KE_CONFIG_SEND:
             if (dev->init.json_to_config) {
                 // Overwrite the CRC with a NULL terminator for the string. (Message has already been verified) 
