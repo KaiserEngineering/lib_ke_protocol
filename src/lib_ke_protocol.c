@@ -256,9 +256,14 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
             break;
 
         case KE_BACKGROUND_SEND:
-        	if (dev->init.save_rgba) {
-        		uint8_t idx = dev->rx_buffer[KE_PCKT_DATA_START_POS];
-        		dev->init.save_rgba((char*)&dev->rx_buffer[KE_PCKT_DATA_START_POS+1], UI_HOR_RES * UI_VER_RES * UI_BYTES_PER_PIXEL, idx);
+        	uint32_t expected_size = UI_HOR_RES * UI_VER_RES * UI_BYTES_PER_PIXEL;
+        	uint32_t start = KE_PCKT_DATA_START_POS + 1;
+        	uint32_t end = start + expected_size;
+        	if (end > dev->rx_byte_count) {
+            	LOGI(TAG, "Image larger than payload");
+            	Generate_TX_Message( dev, KE_NACK, 0 );
+        	} else if (dev->init.save_rgba) {
+        		dev->init.save_rgba((char*)&dev->rx_buffer[start], expected_size, dev->rx_buffer[KE_PCKT_DATA_START_POS]);
         		Generate_TX_Message( dev, KE_ACK, 0 );
         	} else {
             	LOGI(TAG, "No save_rgba() registered.");
