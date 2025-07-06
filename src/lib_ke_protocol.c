@@ -305,7 +305,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
 KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
 {
     // Add the byte to the buffer
-    if (dev->rx_byte_count < KE_MAX_RX_PAYLOAD) {
+    if (dev->rx_byte_count < dev->rx_buffer_size) {
         dev->rx_buffer[dev->rx_byte_count++] = byte;
     } else {
         dev->diagnostic.rx_abort_count++;
@@ -455,12 +455,12 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
 
                         /* Check if this is a 2 byte PID */
                         if( ((dev->stream[i]->pid_uuid >> 8) & 0xFF) || 0 )
-                            dev->tx_byte_count += snprintf((char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_TX_PAYLOAD ,
+                            dev->tx_byte_count += snprintf((char*)(&dev->tx_buffer[dev->tx_byte_count]), dev->tx_buffer_size ,
                                     "0x%02X%04X:%u:%.2f", (uint8_t)(dev->stream[i]->pid_uuid >> 16), (uint16_t)(dev->stream[i]->pid_uuid), units, value);
 
                         /* If not, assume it is a single byte PID */
                         else
-                            dev->tx_byte_count += snprintf((char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_TX_PAYLOAD ,
+                            dev->tx_byte_count += snprintf((char*)(&dev->tx_buffer[dev->tx_byte_count]), dev->tx_buffer_size ,
                                     "0x%02X%02X:%u:%.2f", (uint8_t)(dev->stream[i]->pid_uuid >> 16), (uint8_t)(dev->stream[i]->pid_uuid & 0xFF), units, value);
 
                         /* Add a semi-colon after every PID except the last */
@@ -521,7 +521,7 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
             break;
         case KE_FIRMWARE_REPORT:
             LOGI(TAG, "Firmware Report Sent");
-            dev->tx_byte_count += snprintf( (char*)(&dev->tx_buffer[dev->tx_byte_count]), KE_MAX_TX_PAYLOAD , "%02d.%02d.%02d",
+            dev->tx_byte_count += snprintf( (char*)(&dev->tx_buffer[dev->tx_byte_count]), dev->tx_buffer_size , "%02d.%02d.%02d",
                     dev->init.firmware_version_major ,
                     dev->init.firmware_version_minor,
                     dev->init.firmware_version_hotfix );
@@ -535,7 +535,7 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
         	break;
         case KE_CONFIG_SEND:
             if (dev->init.config_to_json) {
-                dev->tx_byte_count += dev->init.config_to_json((char*)&dev->tx_buffer[KE_PCKT_DATA_START_POS], KE_MAX_TX_PAYLOAD - KE_PCKT_DATA_START_POS - 1);
+                dev->tx_byte_count += dev->init.config_to_json((char*)&dev->tx_buffer[KE_PCKT_DATA_START_POS], dev->tx_buffer_size - KE_PCKT_DATA_START_POS - 1);
             } else {
             	LOGI(TAG, "No config_to_json() registered.");
             }
@@ -553,7 +553,7 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
         	break;
         case KE_OPTION_LIST_SEND:
             if (dev->init.options_to_json) {
-                dev->tx_byte_count += dev->init.options_to_json((char*)&dev->tx_buffer[KE_PCKT_DATA_START_POS], KE_MAX_TX_PAYLOAD - KE_PCKT_DATA_START_POS - 1);
+                dev->tx_byte_count += dev->init.options_to_json((char*)&dev->tx_buffer[KE_PCKT_DATA_START_POS], dev->tx_buffer_size - KE_PCKT_DATA_START_POS - 1);
             } else {
             	LOGI(TAG, "No options_to_json() registered.");
             }
@@ -634,7 +634,7 @@ static void clear_diagnostics( PKE_PACKET_MANAGER dev )
 static void flush_tx_buffer( PKE_PACKET_MANAGER dev )
 {
     /* Clear the buffer */
-    memset( dev->tx_buffer, 0, KE_MAX_TX_PAYLOAD );
+    memset( dev->tx_buffer, 0, dev->tx_buffer_size );
 
     /* Reset the byte count */
     dev->tx_byte_count = 0;
@@ -643,7 +643,7 @@ static void flush_tx_buffer( PKE_PACKET_MANAGER dev )
 static void flush_rx_buffer( PKE_PACKET_MANAGER dev )
 {
     /* Clear the buffer */
-    memset( dev->rx_buffer, 0, KE_MAX_RX_PAYLOAD );
+    memset( dev->rx_buffer, 0, dev->rx_buffer_size );
 
     /* Reset the byte count */
     dev->rx_byte_count = 0;
