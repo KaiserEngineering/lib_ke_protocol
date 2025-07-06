@@ -256,7 +256,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
             break;
 
         case KE_BACKGROUND_SEND:
-        	uint32_t expected_size = UI_HOR_RES * UI_VER_RES * UI_BYTES_PER_PIXEL;
+        	uint32_t expected_size = 1024 * 200 * 4; // TODO - DO NOT HARDCODE THIS
         	uint32_t start = KE_PCKT_DATA_START_POS + 1;
         	uint32_t end = start + expected_size;
         	if (end > dev->rx_byte_count) {
@@ -270,6 +270,24 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
             	Generate_TX_Message( dev, KE_NACK, 0 );
         	}
         	break;
+
+        case KE_BACKGROUND_CRC_SEND:
+            if(dev->init.receive_rgba_crc) {
+                // Cast and dereference
+                uint8_t background_idx = dev->rx_buffer[KE_PCKT_DATA_START_POS];
+                uint32_t background_crc = ((uint32_t)dev->rx_buffer[KE_PCKT_DATA_START_POS+1] << 24) |
+                                          ((uint32_t)dev->rx_buffer[KE_PCKT_DATA_START_POS+2] << 16) |
+                                          ((uint32_t)dev->rx_buffer[KE_PCKT_DATA_START_POS+3] << 8)  |
+                                          ((uint32_t)dev->rx_buffer[KE_PCKT_DATA_START_POS+4]);
+                
+                dev->init.receive_rgba_crc(background_idx, background_crc);
+            } else {
+            	LOGI(TAG, "No receive_rgba_crc() registered.");
+            }
+
+            // KE_BACKGROUND_CRC_REQUEST has been responded to
+            KE_clear_flag(dev, KE_PENDING_RESPONSE);
+            break;
 
         case KE_CONFIG_SEND:
             if (dev->init.json_to_config) {
@@ -559,6 +577,33 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
             LOGI(TAG, "Background Image Request Sent");
             /* No additional data necessary */
         	break;
+        case KE_BACKGROUND_CRC_SEND:
+            if(dev->init.get_rgba_crc) {
+                // Cast and dereference
+                uint8_t background_idx = *((uint8_t *)args);
+                uint32_t background_crc = dev->init.get_rgba_crc(background_idx, 0);
+
+                dev->tx_buffer[dev->tx_byte_count++] = background_idx;
+                dev->tx_buffer[dev->tx_byte_count++] = (uint8_t)(background_crc >> 24);
+                dev->tx_buffer[dev->tx_byte_count++] = (uint8_t)(background_crc >> 16);
+                dev->tx_buffer[dev->tx_byte_count++] = (uint8_t)(background_crc >> 8);
+                dev->tx_buffer[dev->tx_byte_count++] = (uint8_t)(background_crc);
+            } else {
+            	LOGI(TAG, "No rgba_crc() registered.");
+            }
+            LOGI(TAG, "Background CRC Sent");
+            break;
+        case KE_BACKGROUND_CRC_REQUEST:
+            // Cast and dereference
+            uint8_t background_idx = *((uint8_t *)args);
+
+            dev->tx_buffer[dev->tx_byte_count++] = background_idx;
+
+            LOGI(TAG, "Background CRC Request Sent");
+
+            // A response is needed.
+            KE_set_flag(dev, KE_PENDING_RESPONSE);
+            break;
         case KE_CONFIG_SEND:
             if (dev->init.config_to_json) {
                 dev->tx_byte_count += dev->init.config_to_json((char*)&dev->tx_buffer[KE_PCKT_DATA_START_POS], dev->tx_buffer_size - KE_PCKT_DATA_START_POS - 1);

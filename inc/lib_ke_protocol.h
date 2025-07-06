@@ -41,6 +41,7 @@ typedef void (*REQUEST_ACTIVE_COOLING)(uint8_t level);
 typedef uint32_t (*KE_STRING_TO_JSON)(char *buffer, uint32_t buffer_size);
 typedef bool (*KE_JSON_TO_FUNCTION)(const char *json_str);
 typedef uint32_t (*PNG_TO_RGBA)(char *buffer, uint32_t buffer_size, uint8_t background_idx);
+typedef uint32_t (*RGBA_CRC)(uint8_t background_idx, uint32_t crc);
 typedef bool (*SAVE_RGBA)(char *buffer, uint32_t buffer_size, uint8_t background_idx);
 
 typedef enum _ke_status {
@@ -71,6 +72,8 @@ typedef struct _kep_init {
     KE_STRING_TO_JSON options_to_json;
     KE_JSON_TO_FUNCTION json_to_options;
     PNG_TO_RGBA png_to_rgba;
+    RGBA_CRC get_rgba_crc;
+    RGBA_CRC receive_rgba_crc;
     SAVE_RGBA save_rgba;
     uint8_t firmware_version_major;
     uint8_t firmware_version_minor;
