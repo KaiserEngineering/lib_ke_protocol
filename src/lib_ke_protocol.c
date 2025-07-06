@@ -319,7 +319,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
                 dev->init.json_to_options((char*)&dev->rx_buffer[KE_PCKT_DATA_START_POS]);
                 Generate_TX_Message( dev, KE_ACK, 0 );
             } else {
-            	LOGI(TAG, "No json_to_config() registered.");
+            	LOGI(TAG, "No json_to_options() registered.");
             	Generate_TX_Message( dev, KE_NACK, 0 );
             }
 
@@ -329,6 +329,25 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
 
         case KE_OPTION_LIST_REQUEST:
         	Generate_TX_Message(dev, KE_OPTION_LIST_SEND, 0);
+        	break;
+
+        case KE_PID_LIST_SEND:
+            if (dev->init.json_to_pid_list) {
+                // Overwrite the CRC with a NULL terminator for the string. (Message has already been verified)
+                dev->rx_buffer[dev->rx_byte_count-1] = '\0';
+                dev->init.json_to_pid_list((char*)&dev->rx_buffer[KE_PCKT_DATA_START_POS]);
+                Generate_TX_Message( dev, KE_ACK, 0 );
+            } else {
+            	LOGI(TAG, "No json_to_pid_list() registered.");
+            	Generate_TX_Message( dev, KE_NACK, 0 );
+            }
+
+            // KE_OPTION_LIST_REQUEST has been responded to
+            KE_clear_flag(dev, KE_PENDING_RESPONSE);
+        	break;
+
+        case KE_PID_LIST_REQUEST:
+        	Generate_TX_Message(dev, KE_PID_LIST_SEND, 0);
         	break;
 
         default:
@@ -643,6 +662,20 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
             // A response is needed.
             KE_set_flag(dev, KE_PENDING_RESPONSE);
             /* No additional data necessary */
+        	break;
+        case KE_PID_LIST_SEND:
+            if (dev->init.pid_list_to_json) {
+                dev->tx_byte_count += dev->init.pid_list_to_json((char*)&dev->tx_buffer[KE_PCKT_DATA_START_POS], dev->tx_buffer_size - KE_PCKT_DATA_START_POS - 1);
+            } else {
+            	LOGI(TAG, "No pid_list_to_json() registered.");
+            }
+            LOGI(TAG, "PID List Sent");
+        	break;
+        case KE_PID_LIST_REQUEST:
+        	LOGI(TAG, "PID list Request Sent");
+
+            // A response is needed.
+            KE_set_flag(dev, KE_PENDING_RESPONSE);
         	break;
         default:
             break;

@@ -71,6 +71,8 @@ typedef struct _kep_init {
     KE_JSON_TO_FUNCTION json_to_config;
     KE_STRING_TO_JSON options_to_json;
     KE_JSON_TO_FUNCTION json_to_options;
+    KE_STRING_TO_JSON pid_list_to_json;
+    KE_JSON_TO_FUNCTION json_to_pid_list;
     PNG_TO_RGBA png_to_rgba;
     RGBA_CRC get_rgba_crc;
     RGBA_CRC receive_rgba_crc;

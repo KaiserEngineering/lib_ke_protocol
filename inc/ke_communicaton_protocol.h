@@ -36,6 +36,8 @@ typedef enum KE_CP_OP_CODES {
 	KE_CONFIG_REQUEST          = (uint8_t)0x24,    /* Request JSON configuration                   */
 	KE_OPTION_LIST_SEND        = (uint8_t)0x25,    /* Send JSON Option list                        */
 	KE_OPTION_LIST_REQUEST     = (uint8_t)0x26,    /* Request JSON Option list                     */
+	KE_PID_LIST_SEND           = (uint8_t)0x27,    /* Send JSON list of PIDs                       */
+	KE_PID_LIST_REQUEST        = (uint8_t)0x28,    /* Request JSON list of PIDs                    */
 } KE_CP_OP_CODES;
 
 #endif /* KE_COMMUNICATON_PROTOCOL_H_ */
