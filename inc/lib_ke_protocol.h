@@ -34,6 +34,7 @@
 #define BYTES_PER_STREAM_REQ         0x05
 
 #define KE_TIMEOUT                   5000
+#define RX_TIMEOUT_MS                50
 #define MAX_RETRIES                  25
 
 typedef int (*TRANSMIT_KE_DATA)(uint8_t *data, uint32_t len);
@@ -92,6 +93,7 @@ typedef struct _ke_packet_manager {
     uint8_t stream_unit[KE_MAX_PIDS];
 	PTR_PID_DATA stream[KE_MAX_PIDS];
     uint32_t ke_time;
+    uint32_t rx_time;
     KEP_INIT init;
     KEP_DIAGNOSTICS diagnostic;
     uint32_t num_retries;
