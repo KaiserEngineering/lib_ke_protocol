@@ -361,18 +361,6 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
 
 KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
 {
-    // Check for timeout
-    if (ke_tick - dev->rx_time > RX_TIMEOUT_MS) {
-        dev->rx_byte_count = 0;
-        KE_clear_flag(dev, KE_RX_IN_PROGRESS);
-        KE_clear_flag(dev, KE_PCKT_CMPLT);
-        flush_rx_buffer(dev);
-        dev->diagnostic.rx_abort_count++;
-        LOGI(TAG, "RX timeout, resetting buffer");
-    }
-
-    dev->rx_time = ke_tick;
-
     // Add the byte to the buffer
     if (dev->rx_byte_count < dev->rx_buffer_size) {
         dev->rx_buffer[dev->rx_byte_count++] = byte;
