@@ -28,16 +28,18 @@ typedef enum KE_CP_OP_CODES {
     KE_FIRMWARE_REQ            = (uint8_t)0x15,    /* Request firmware version                     */
     KE_FIRMWARE_REPORT         = (uint8_t)0x16,    /* Report firmware version                      */
     KE_FIRMWARE_UPDATE         = (uint8_t)0x17,    /* Place device in firmware update mode         */
-	KE_BACKGROUND_SEND         = (uint8_t)0x19,    /* Send background image                        */
-	KE_BACKGROUND_REQUEST      = (uint8_t)0x20,    /* Request background image                     */
-    KE_BACKGROUND_CRC_SEND     = (uint8_t)0x21,    /* Send background CRC                          */
-	KE_BACKGROUND_CRC_REQUEST  = (uint8_t)0x22,    /* Request background CRC                       */
-	KE_CONFIG_SEND             = (uint8_t)0x23,    /* Send JSON configuration                      */
-	KE_CONFIG_REQUEST          = (uint8_t)0x24,    /* Request JSON configuration                   */
-	KE_OPTION_LIST_SEND        = (uint8_t)0x25,    /* Send JSON Option list                        */
-	KE_OPTION_LIST_REQUEST     = (uint8_t)0x26,    /* Request JSON Option list                     */
-	KE_PID_LIST_SEND           = (uint8_t)0x27,    /* Send JSON list of PIDs                       */
-	KE_PID_LIST_REQUEST        = (uint8_t)0x28,    /* Request JSON list of PIDs                    */
+    KE_BACKGROUND_SEND         = (uint8_t)0x18,    /* Send background image                        */
+    KE_BACKGROUND_REQUEST      = (uint8_t)0x19,    /* Request background image                     */
+    KE_BACKGROUND_CRC_SEND     = (uint8_t)0x1A,    /* Send background CRC                          */
+    KE_BACKGROUND_CRC_REQUEST  = (uint8_t)0x1B,    /* Request background CRC                       */
+    KE_CONFIG_SEND             = (uint8_t)0x1C,    /* Send JSON configuration                      */
+    KE_CONFIG_REQUEST          = (uint8_t)0x1D,    /* Request JSON configuration                   */
+    KE_OPTION_LIST_SEND        = (uint8_t)0x1E,    /* Send JSON Option list                        */
+    KE_OPTION_LIST_REQUEST     = (uint8_t)0x1F,    /* Request JSON Option list                     */
+    KE_PID_LIST_SEND           = (uint8_t)0x20,    /* Send JSON list of PIDs                       */
+    KE_PID_LIST_REQUEST        = (uint8_t)0x21,    /* Request JSON list of PIDs                    */
+    KE_BINARY_SEND_CHUNK       = (uint8_t)0x22,    /* Send a chunk of the firmware binary file     */
+    KE_BINARY_RECV_CHUNK       = (uint8_t)0x23,    /* Receive a chunk of the firmware binary file  */
 } KE_CP_OP_CODES;
 
 #endif /* KE_COMMUNICATON_PROTOCOL_H_ */

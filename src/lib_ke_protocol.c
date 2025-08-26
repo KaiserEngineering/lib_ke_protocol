@@ -689,6 +689,24 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
             // A response is needed.
             KE_set_flag(dev, KE_PENDING_RESPONSE);
         	break;
+        case KE_BINARY_SEND_CHUNK:
+            if (dev->init.binary_get_chunk) {
+                
+                // Cast and dereference
+                uint32_t start_byte = *((uint32_t *)args);
+
+                 // Copy the 4 bytes of the chunk into tx_buffer
+                memcpy(&dev->tx_buffer[dev->tx_byte_count], &start_byte, sizeof(start_byte));
+                dev->tx_byte_count += sizeof(start_byte);
+
+                dev->tx_byte_count += dev->init.binary_get_chunk((char*)&dev->tx_buffer[dev->tx_byte_count], dev->tx_buffer_size - KE_PCKT_DATA_START_POS - 1);
+
+                // A response is needed.
+                KE_set_flag(dev, KE_PENDING_RESPONSE);
+            } else {
+            	LOGI(TAG, "No pid_list_to_json() registered.");
+            }
+            LOGI(TAG, "Firmware binary sent");
         default:
             break;
     }
