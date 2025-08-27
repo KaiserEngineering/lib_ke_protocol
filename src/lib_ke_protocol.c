@@ -14,6 +14,8 @@
 
     #ifdef ESP_PLATFORM
     #include "esp_log.h"
+    #include "freertos/FreeRTOS.h"
+    #include "freertos/task.h"
     #define LOGI(tag, fmt, ...) ESP_LOGI(tag, fmt, ##__VA_ARGS__)
     #define LOGE(tag, fmt, ...) ESP_LOGE(tag, fmt, ##__VA_ARGS__)
 	static const char *TAG = "KE";
@@ -447,7 +449,8 @@ KE_STATUS KE_Add_UART_Byte( PKE_PACKET_MANAGER dev, uint8_t byte )
 void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args )
 {
     /* Clear the buffer */
-    flush_tx_buffer( dev );
+    //flush_tx_buffer( dev );
+    dev->tx_byte_count = 0;
 
     /* Populate the Start of Line bytes */
     dev->tx_buffer[KE_PCKT_SOL_BYTE0_POS] = KE_SOL_BYTE0;
@@ -746,6 +749,10 @@ void KE_wait_for_response( PKE_PACKET_MANAGER dev, uint32_t timeout )
         // Exit once a response has been received
         if ( KE_get_flag(dev, KE_PENDING_RESPONSE) == 0 )
             return;
+
+        #ifdef ESP_PLATFORM
+        vTaskDelay(pdMS_TO_TICKS(1)); // Allow WDT refresh
+        #endif
     }
 
     LOGI(TAG, "Timeout at %lums, no response received", (unsigned long)ke_tick);
