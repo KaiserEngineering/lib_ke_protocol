@@ -352,6 +352,29 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
         	Generate_TX_Message(dev, KE_PID_LIST_SEND, 0);
         	break;
 
+        case KE_BINARY_SEND_CHUNK:
+        	if (dev->init.binary_to_flash) {
+        		uint32_t offset =
+        		    ((uint32_t)dev->rx_buffer[KE_PCKT_DATA_START_POS] << 24) |
+        		    ((uint32_t)dev->rx_buffer[KE_PCKT_DATA_START_POS + 1] << 16) |
+        		    ((uint32_t)dev->rx_buffer[KE_PCKT_DATA_START_POS + 2] << 8) |
+        		    ((uint32_t)dev->rx_buffer[KE_PCKT_DATA_START_POS + 3]);
+
+                // Pointer to the start of binary data (after the offset)
+                char *binary_data = (char *)&dev->rx_buffer[KE_PCKT_DATA_START_POS + sizeof(uint32_t)];
+
+                // Calculate the size of the binary chunk
+                uint32_t chunk_size = dev->rx_byte_count - KE_PCKT_DATA_START_POS - sizeof(uint32_t) - 1;
+
+                dev->init.binary_to_flash(binary_data, chunk_size, offset);
+
+            	Generate_TX_Message(dev, KE_ACK, 0);
+        	} else {
+            	LOGI(TAG, "No binary_to_flash() registered.");
+            	Generate_TX_Message( dev, KE_NACK, 0 );
+            }
+        	break;
+
         default:
             LOGI(TAG, "Protocol Error on Receive");
             return KE_ERROR;

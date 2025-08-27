@@ -45,7 +45,7 @@ typedef uint32_t (*PNG_TO_RGBA)(char *buffer, uint32_t buffer_size, uint8_t back
 typedef uint32_t (*RGBA_CRC)(uint8_t background_idx, uint32_t crc);
 typedef bool (*SAVE_RGBA)(char *buffer, uint32_t buffer_size, uint8_t background_idx);
 typedef uint32_t (*BIN_GET_CHUNK)(char *buffer, uint32_t buffer_size);
-typedef uint32_t (*BIN_RECEIVE_CHUNK)(char *buffer, uint32_t buffer_size, uint32_t chunk);
+typedef uint32_t (*BIN_TO_FLASH)(char *buffer, uint32_t buffer_size, uint32_t offset);
 
 typedef enum _ke_status {
     KE_ERROR,
@@ -77,7 +77,7 @@ typedef struct _kep_init {
     KE_STRING_TO_JSON pid_list_to_json;
     KE_JSON_TO_FUNCTION json_to_pid_list;
     BIN_GET_CHUNK binary_get_chunk;
-    BIN_RECEIVE_CHUNK binary_receive_chunk;
+    BIN_TO_FLASH binary_to_flash;
     PNG_TO_RGBA png_to_rgba;
     RGBA_CRC get_rgba_crc;
     RGBA_CRC receive_rgba_crc;
