@@ -375,6 +375,17 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
             }
         	break;
 
+        case KE_ENTER_BOOTLOADER:
+        	if (dev->init.enter_bootloader) {
+        		dev->init.enter_bootloader();
+
+        		// DO NOT ACT, the bootloader should send an ACK once it's ready
+        	} else {
+            	LOGI(TAG, "No enter_bootloader() registered.");
+            	Generate_TX_Message( dev, KE_NACK, 0 );
+        	}
+        	break;
+
         default:
             LOGI(TAG, "Protocol Error on Receive");
             return KE_ERROR;
@@ -735,6 +746,9 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
             	LOGI(TAG, "No pid_list_to_json() registered.");
             }
             LOGI(TAG, "Firmware binary sent");
+        case KE_ENTER_BOOTLOADER:
+            LOGI(TAG, "Bootloader Activation Sent");
+            break;
         default:
             break;
     }

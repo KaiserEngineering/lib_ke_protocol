@@ -40,6 +40,7 @@ typedef enum KE_CP_OP_CODES {
     KE_PID_LIST_REQUEST        = (uint8_t)0x21,    /* Request JSON list of PIDs                    */
     KE_BINARY_SEND_CHUNK       = (uint8_t)0x22,    /* Send a chunk of the firmware binary file     */
     KE_BINARY_RECV_CHUNK       = (uint8_t)0x23,    /* Receive a chunk of the firmware binary file  */
+	KE_ENTER_BOOTLOADER        = (uint8_t)0x24,    /* Enter bootloader mode                        */
 } KE_CP_OP_CODES;
 
 #endif /* KE_COMMUNICATON_PROTOCOL_H_ */

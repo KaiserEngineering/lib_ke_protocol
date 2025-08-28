@@ -46,6 +46,7 @@ typedef uint32_t (*RGBA_CRC)(uint8_t background_idx, uint32_t crc);
 typedef bool (*SAVE_RGBA)(char *buffer, uint32_t buffer_size, uint8_t background_idx);
 typedef uint32_t (*BIN_GET_CHUNK)(char *buffer, uint32_t buffer_size);
 typedef bool (*BIN_TO_FLASH)(uint8_t *buffer, uint32_t buffer_size, uint32_t offset);
+typedef void (*KE_FUNC_CALL)(void);
 
 typedef enum _ke_status {
     KE_ERROR,
@@ -82,6 +83,7 @@ typedef struct _kep_init {
     RGBA_CRC get_rgba_crc;
     RGBA_CRC receive_rgba_crc;
     SAVE_RGBA save_rgba;
+    KE_FUNC_CALL enter_bootloader;
     uint8_t firmware_version_major;
     uint8_t firmware_version_minor;
     uint8_t firmware_version_hotfix;
