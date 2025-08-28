@@ -721,9 +721,11 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
                 // Cast and dereference
                 uint32_t start_byte = *((uint32_t *)args);
 
-                 // Copy the 4 bytes of the chunk into tx_buffer
-                memcpy(&dev->tx_buffer[dev->tx_byte_count], &start_byte, sizeof(start_byte));
-                dev->tx_byte_count += sizeof(start_byte);
+                // Copy the 4 bytes of the chunk into tx_buffer
+                dev->tx_buffer[dev->tx_byte_count++] = (start_byte >> 24) & 0xFF;
+                dev->tx_buffer[dev->tx_byte_count++] = (start_byte >> 16) & 0xFF;
+                dev->tx_buffer[dev->tx_byte_count++] = (start_byte >>  8) & 0xFF;
+                dev->tx_buffer[dev->tx_byte_count++] =  start_byte        & 0xFF;
 
                 dev->tx_byte_count += dev->init.binary_get_chunk((char*)&dev->tx_buffer[dev->tx_byte_count], dev->tx_buffer_size - KE_PCKT_DATA_START_POS - 1);
 
