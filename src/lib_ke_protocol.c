@@ -361,7 +361,7 @@ static KE_STATUS KE_Process_Packet( PKE_PACKET_MANAGER dev )
         		    ((uint32_t)dev->rx_buffer[KE_PCKT_DATA_START_POS + 3]);
 
                 // Pointer to the start of binary data (after the offset)
-                char *binary_data = (char *)&dev->rx_buffer[KE_PCKT_DATA_START_POS + sizeof(uint32_t)];
+                uint8_t *binary_data = (uint8_t *)&dev->rx_buffer[KE_PCKT_DATA_START_POS + sizeof(uint32_t)];
 
                 // Calculate the size of the binary chunk
                 uint32_t chunk_size = dev->rx_byte_count - KE_PCKT_DATA_START_POS - sizeof(uint32_t) - 1;
