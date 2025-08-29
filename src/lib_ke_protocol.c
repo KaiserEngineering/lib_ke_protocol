@@ -746,6 +746,7 @@ void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args
             	LOGI(TAG, "No pid_list_to_json() registered.");
             }
             LOGI(TAG, "Firmware binary sent");
+            break;
         case KE_ENTER_BOOTLOADER:
             LOGI(TAG, "Bootloader Activation Sent");
             break;
