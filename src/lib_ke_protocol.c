@@ -159,6 +159,7 @@ KE_STATUS KE_Service(PKE_PACKET_MANAGER dev)
 
 static KE_STATUS KE_Process_Packet(PKE_PACKET_MANAGER dev)
 {
+    dev->last_rx = dev->rx_buffer[KE_PCKT_CMD_POS];
     switch (dev->rx_buffer[KE_PCKT_CMD_POS])
     {
     case KE_ACK:
@@ -815,15 +816,16 @@ void Generate_TX_Message(PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args)
     dev->init.transmit(dev->tx_buffer, dev->tx_byte_count);
 }
 
-void KE_wait_for_response(PKE_PACKET_MANAGER dev, uint32_t timeout)
+KE_CP_OP_CODES KE_wait_for_response(PKE_PACKET_MANAGER dev, uint32_t timeout)
 {
     uint32_t start_t = ke_tick;
+    KE_CP_OP_CODES last = KE_RESERVED;
 
     // Non-blocking when timeout is 0
     if (timeout == 0)
     {
         LOGI(TAG, "No timeout, immediately continue");
-        return;
+        return last;
     }
 
     // Wait for a response
@@ -833,7 +835,11 @@ void KE_wait_for_response(PKE_PACKET_MANAGER dev, uint32_t timeout)
 
         // Exit once a response has been received
         if (KE_get_flag(dev, KE_PENDING_RESPONSE) == 0)
-            return;
+        {
+            last = dev->last_rx;
+            dev->last_rx = KE_RESERVED;
+            return last;
+        }
 
 #ifdef ESP_PLATFORM
         vTaskDelay(pdMS_TO_TICKS(1)); // Allow WDT refresh
@@ -841,6 +847,7 @@ void KE_wait_for_response(PKE_PACKET_MANAGER dev, uint32_t timeout)
     }
 
     LOGI(TAG, "Timeout at %lums, no response received", (unsigned long)ke_tick);
+    return last;
 }
 
 void KE_tick(void)

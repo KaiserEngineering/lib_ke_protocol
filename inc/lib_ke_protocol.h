@@ -119,6 +119,7 @@ typedef struct _ke_packet_manager {
     uint32_t rx_buffer_size;
     uint32_t rx_byte_count;
     uint8_t num_pids;
+    KE_CP_OP_CODES last_rx;
 } KE_PACKET_MANAGER, *PKE_PACKET_MANAGER;
 
 void KE_tick( void );
@@ -131,7 +132,7 @@ uint32_t get_KE_rx_abort_count( PKE_PACKET_MANAGER dev );
 uint32_t get_KE_tx_abort_count( PKE_PACKET_MANAGER dev );
 
 void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args );
-void KE_wait_for_response( PKE_PACKET_MANAGER dev, uint32_t timeout );
+KE_CP_OP_CODES KE_wait_for_response( PKE_PACKET_MANAGER dev, uint32_t timeout );
 
 
 
