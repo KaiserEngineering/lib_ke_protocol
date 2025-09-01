@@ -454,33 +454,6 @@ KE_STATUS KE_Add_UART_Byte(PKE_PACKET_MANAGER dev, uint8_t byte)
         return KE_BUFFER_FULL;
     }
 
-    // Check for SOL sequence using a sliding window
-    if (dev->rx_byte_count >= 4)
-    {
-        int i = dev->rx_byte_count - 4;
-        if (dev->rx_buffer[i + 0] == KE_SOL_BYTE0 &&
-            dev->rx_buffer[i + 1] == KE_SOL_BYTE1 &&
-            dev->rx_buffer[i + 2] == KE_SOL_BYTE2 &&
-            dev->rx_buffer[i + 3] == KE_SOL_BYTE3)
-        {
-            // Found SOL — restart buffer from this point
-            if (KE_get_flag(dev, KE_RX_IN_PROGRESS))
-            {
-                dev->diagnostic.rx_abort_count++;
-            }
-
-            // Shift SOL to index 0
-            memmove(dev->rx_buffer, &dev->rx_buffer[i], dev->rx_byte_count - i);
-            dev->rx_byte_count = dev->rx_byte_count - i;
-
-            KE_set_flag(dev, KE_RX_IN_PROGRESS);
-            KE_clear_flag(dev, KE_PCKT_CMPLT);
-
-            // LOGI(TAG, "Start of new message");
-            return KE_START_OF_NEW_MSG;
-        }
-    }
-
     // If already receiving, check for message complete
     if (KE_get_flag(dev, KE_RX_IN_PROGRESS))
     {
