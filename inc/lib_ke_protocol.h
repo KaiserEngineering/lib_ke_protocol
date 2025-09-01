@@ -34,7 +34,7 @@
 #define BYTES_PER_STREAM_REQ         0x05
 
 #define KE_TIMEOUT                   5000
-#define RX_TIMEOUT_MS                5000
+#define RX_TIMEOUT_MS                1250
 #define MAX_RETRIES                  25
 
 typedef int (*TRANSMIT_KE_DATA)(uint8_t *data, uint32_t len);
