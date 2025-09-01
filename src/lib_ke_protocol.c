@@ -812,19 +812,19 @@ void Generate_TX_Message(PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args)
         break;
     }
 
-    // Calculate CRC over the entire packet before adding CRC byte
-    uint8_t crc = crc8(dev->tx_buffer, dev->tx_byte_count);
-
-    /* Packet is complete */
-    dev->tx_buffer[dev->tx_byte_count++] = crc;
-
-    uint32_t len = dev->tx_byte_count;
+    uint32_t len = dev->tx_byte_count + 1;  // +1 for CRC byte
 
     /* Populate the length */
     dev->tx_buffer[KE_PCKT_LEN_BYTE0_POS] = (len >> 24) & 0xFF; // Most significant byte
     dev->tx_buffer[KE_PCKT_LEN_BYTE1_POS] = (len >> 16) & 0xFF;
     dev->tx_buffer[KE_PCKT_LEN_BYTE2_POS] = (len >> 8) & 0xFF;
     dev->tx_buffer[KE_PCKT_LEN_BYTE3_POS] = (len >> 0) & 0xFF; // Least significant byte
+
+    // Calculate CRC over the entire packet before adding CRC byte
+    uint8_t crc = crc8(dev->tx_buffer, dev->tx_byte_count);
+
+    /* Packet is complete */
+    dev->tx_buffer[dev->tx_byte_count++] = crc;
 
     /* Send the packet */
     dev->init.transmit(dev->tx_buffer, dev->tx_byte_count);
