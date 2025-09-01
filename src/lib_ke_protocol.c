@@ -494,6 +494,18 @@ KE_STATUS KE_Add_UART_Byte(PKE_PACKET_MANAGER dev, uint8_t byte)
                        ((uint32_t)dev->rx_buffer[KE_PCKT_LEN_BYTE2_POS] << 8) |
                        ((uint32_t)dev->rx_buffer[KE_PCKT_LEN_BYTE3_POS]);
 
+        const uint32_t MIN_LEN = KE_PCKT_DATA_START_POS + 1; // at least header + CRC
+        const uint32_t MAX_LEN = dev->rx_buffer_size;
+
+        if (len < MIN_LEN || len > MAX_LEN) {
+            // bad length: drop frame and re-arm for next SOL
+            dev->diagnostic.rx_abort_count++;
+            KE_clear_flag(dev, KE_RX_IN_PROGRESS);
+            dev->rx_byte_count = 0;
+            LOGE(TAG, "Bad len=%u", (unsigned)len);
+            return KE_OUT_OF_SYNC;
+        }
+
         if (dev->rx_byte_count == len)
         {
             KE_clear_flag(dev, KE_RX_IN_PROGRESS);
