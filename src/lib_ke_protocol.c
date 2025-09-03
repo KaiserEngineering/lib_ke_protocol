@@ -84,6 +84,62 @@ KE_STATUS KE_Initialize(PKE_PACKET_MANAGER dev)
     return KE_OK;
 }
 
+static int find_sol_idx(const uint8_t *b, int n) {
+    if (n < 4) return -1;
+    for (int i = 0; i <= n - 4; i++) {
+        if (b[i]     == KE_SOL_BYTE0 &&
+            b[i + 1] == KE_SOL_BYTE1 &&
+            b[i + 2] == KE_SOL_BYTE2 &&
+            b[i + 3] == KE_SOL_BYTE3) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static void rx_resync_to_sol(PKE_PACKET_MANAGER dev) {
+    int idx = find_sol_idx(dev->rx_buffer, (int)dev->rx_byte_count);
+    if (idx >= 0) {
+        size_t rem = dev->rx_byte_count - (size_t)idx;
+        memmove(dev->rx_buffer, &dev->rx_buffer[idx], rem);
+        dev->rx_byte_count = rem;
+    } else {
+        // keep last 3 bytes (in case they start a future SOL), drop the rest
+        if (dev->rx_byte_count >= 3) {
+            dev->rx_buffer[0] = dev->rx_buffer[dev->rx_byte_count - 3];
+            dev->rx_buffer[1] = dev->rx_buffer[dev->rx_byte_count - 2];
+            dev->rx_buffer[2] = dev->rx_buffer[dev->rx_byte_count - 1];
+            dev->rx_byte_count = 3;
+        } else {
+            dev->rx_byte_count = 0;
+        }
+    }
+    KE_clear_flag(dev, KE_RX_IN_PROGRESS);
+    KE_clear_flag(dev, KE_PCKT_CMPLT);
+}
+
+static inline size_t tx_space_left(PKE_PACKET_MANAGER dev) {
+    if (dev->tx_byte_count >= dev->tx_buffer_size) return 0;
+    return dev->tx_buffer_size - dev->tx_byte_count;
+}
+
+static bool tx_append_bytes(PKE_PACKET_MANAGER dev, const void *src, size_t n) {
+    size_t left = tx_space_left(dev);
+    if (n > left) return false;
+    memcpy(&dev->tx_buffer[dev->tx_byte_count], src, n);
+    dev->tx_byte_count += n;
+    return true;
+}
+
+static bool tx_append_u32_be(PKE_PACKET_MANAGER dev, uint32_t v) {
+    uint8_t tmp[4] = { (uint8_t)(v >> 24), (uint8_t)(v >> 16), (uint8_t)(v >> 8), (uint8_t)v };
+    return tx_append_bytes(dev, tmp, 4);
+}
+
+static inline bool ke_ms_elapsed(uint32_t start_ms, uint32_t timeout_ms) {
+    return (uint32_t)(ke_tick - start_ms) >= timeout_ms;
+}
+
 KE_STATUS KE_Service(PKE_PACKET_MANAGER dev)
 {
     /*********************************************************
@@ -95,8 +151,11 @@ KE_STATUS KE_Service(PKE_PACKET_MANAGER dev)
         KE_Process_Packet(dev);
 
         dev->num_retries = 0;
+        dev->rx_byte_count = 0;
 
+        KE_clear_flag(dev, KE_RX_IN_PROGRESS);
         KE_clear_flag(dev, KE_PCKT_CMPLT);
+        flush_rx_buffer(dev);
 
         reset_idle_time(dev);
     }
@@ -108,7 +167,7 @@ KE_STATUS KE_Service(PKE_PACKET_MANAGER dev)
         if (KE_get_flag(dev, KE_PENDING_RESPONSE))
         {
             /* Verify the message hasn't timed out */
-            if (ke_tick > (dev->ke_time + KE_TIMEOUT))
+            if (ke_ms_elapsed(dev->ke_time, KE_TIMEOUT))
             {
                 /* If so, clear the pending response flag in order to re-send the data */
                 KE_clear_flag(dev, KE_PENDING_RESPONSE);
@@ -428,103 +487,111 @@ static KE_STATUS KE_Process_Packet(PKE_PACKET_MANAGER dev)
 
 KE_STATUS KE_Add_UART_Byte(PKE_PACKET_MANAGER dev, uint8_t byte)
 {
-    // Check for timeout
-    if (ke_tick - dev->rx_time > RX_TIMEOUT_MS)
-    {
-        dev->rx_byte_count = 0;
-        KE_clear_flag(dev, KE_RX_IN_PROGRESS);
-        KE_clear_flag(dev, KE_PCKT_CMPLT);
-        flush_rx_buffer(dev);
-        dev->diagnostic.rx_abort_count++;
-        LOGI(TAG, "RX timeout, resetting buffer");
+    // Timeout on partial frame → resync to next SOL
+    if (ke_ms_elapsed(dev->rx_time, RX_TIMEOUT_MS)) {
+        if (dev->rx_byte_count > 0) {
+            dev->diagnostic.rx_abort_count++;
+            LOGI(TAG, "RX timeout, resync");
+        }
+        rx_resync_to_sol(dev);
     }
 
     dev->rx_time = ke_tick;
 
-    // Add the byte to the buffer
-    if (dev->rx_byte_count < dev->rx_buffer_size)
-    {
+    // Add byte if room, else treat as overflow and resync
+    if (dev->rx_byte_count < dev->rx_buffer_size) {
         dev->rx_buffer[dev->rx_byte_count++] = byte;
-    }
-    else
-    {
+    } else {
         dev->diagnostic.rx_abort_count++;
-        KE_clear_flag(dev, KE_RX_IN_PROGRESS);
-        dev->rx_byte_count = 0;
-        LOGI(TAG, "Buffer Full");
+        LOGE(TAG, "RX buffer full, resync");
+        rx_resync_to_sol(dev);
         return KE_BUFFER_FULL;
     }
 
-    // If already receiving, check for message complete
-    if (KE_get_flag(dev, KE_RX_IN_PROGRESS))
-    {
+    KE_set_flag(dev, KE_RX_IN_PROGRESS);
+    KE_clear_flag(dev, KE_PCKT_CMPLT);
 
-        // Verify the length data has been rx'd
-        if (dev->rx_byte_count <= KE_PCKT_LEN_BYTE3_POS)
+    // Ensure buffer begins at SOL; if not, resync
+    if (dev->rx_byte_count >= 4) {
+        if (!(dev->rx_buffer[0] == KE_SOL_BYTE0 &&
+              dev->rx_buffer[1] == KE_SOL_BYTE1 &&
+              dev->rx_buffer[2] == KE_SOL_BYTE2 &&
+              dev->rx_buffer[3] == KE_SOL_BYTE3)) {
+            rx_resync_to_sol(dev);
             return KE_OK;
-
-        uint32_t len = ((uint32_t)dev->rx_buffer[KE_PCKT_LEN_BYTE0_POS] << 24) |
-                       ((uint32_t)dev->rx_buffer[KE_PCKT_LEN_BYTE1_POS] << 16) |
-                       ((uint32_t)dev->rx_buffer[KE_PCKT_LEN_BYTE2_POS] << 8) |
-                       ((uint32_t)dev->rx_buffer[KE_PCKT_LEN_BYTE3_POS]);
-
-        const uint32_t MIN_LEN = KE_PCKT_DATA_START_POS + 1; // at least header + CRC
-        const uint32_t MAX_LEN = dev->rx_buffer_size;
-
-        if (len < MIN_LEN || len > MAX_LEN) {
-            // bad length: drop frame and re-arm for next SOL
-            dev->diagnostic.rx_abort_count++;
-            KE_clear_flag(dev, KE_RX_IN_PROGRESS);
-            dev->rx_byte_count = 0;
-            LOGE(TAG, "Bad len=%u", (unsigned)len);
-            return KE_OUT_OF_SYNC;
         }
+    } else {
+        return KE_OK; // not enough for header yet
+    }
 
-        if (dev->rx_byte_count == len)
-        {
-            KE_clear_flag(dev, KE_RX_IN_PROGRESS);
-            dev->diagnostic.rx_count++;
-            KE_set_flag(dev, KE_PCKT_CMPLT);
-            // LOGI(TAG, "Packet completed");
-            return KE_PACKET_COMPLETE;
-        }
-
-        else if (dev->rx_byte_count > len)
-        {
-            dev->diagnostic.rx_abort_count++;
-            KE_clear_flag(dev, KE_RX_IN_PROGRESS);
-            dev->rx_byte_count = 0;
-            LOGI(TAG, "Out of sync");
-            return KE_OUT_OF_SYNC;
-        }
-
+    // Need full length field before we can proceed
+    if (dev->rx_byte_count <= KE_PCKT_LEN_BYTE3_POS) {
         return KE_OK;
     }
 
-    return KE_OK;
+    // Parse declared length (total bytes: header..data..CRC)
+    uint32_t len = ((uint32_t)dev->rx_buffer[KE_PCKT_LEN_BYTE0_POS] << 24) |
+                   ((uint32_t)dev->rx_buffer[KE_PCKT_LEN_BYTE1_POS] << 16) |
+                   ((uint32_t)dev->rx_buffer[KE_PCKT_LEN_BYTE2_POS] << 8)  |
+                   ((uint32_t)dev->rx_buffer[KE_PCKT_LEN_BYTE3_POS]);
+
+    const uint32_t MIN_LEN = KE_PCKT_DATA_START_POS + 1;   // at least header + CRC
+    const uint32_t MAX_LEN = dev->rx_buffer_size;
+
+    if (len < MIN_LEN || len > MAX_LEN) {
+        dev->diagnostic.rx_abort_count++;
+        LOGE(TAG, "Bad length=%u, resync", (unsigned)len);
+        rx_resync_to_sol(dev);
+        return KE_OUT_OF_SYNC;
+    }
+
+    if (dev->rx_byte_count < len) {
+        return KE_OK; // keep collecting
+    }
+
+    if (dev->rx_byte_count > len) {
+        // We read beyond; most likely due to upstream lag—resync
+        dev->diagnostic.rx_abort_count++;
+        LOGE(TAG, "RX overshoot (%u>%u), resync", (unsigned)dev->rx_byte_count, (unsigned)len);
+        rx_resync_to_sol(dev);
+        return KE_OUT_OF_SYNC;
+    }
+
+    // rx_byte_count == len → verify CRC
+    uint8_t got_crc  = dev->rx_buffer[len - 1];
+    uint8_t calc_crc = crc8(dev->rx_buffer, len - 1);
+    if (got_crc != calc_crc) {
+        dev->diagnostic.rx_abort_count++;
+        LOGE(TAG, "CRC fail (got=0x%02X calc=0x%02X), resync", got_crc, calc_crc);
+        rx_resync_to_sol(dev);
+        return KE_OUT_OF_SYNC;
+    }
+
+    // Good frame
+    KE_clear_flag(dev, KE_RX_IN_PROGRESS);
+    dev->diagnostic.rx_count++;
+    KE_set_flag(dev, KE_PCKT_CMPLT);
+    LOGI(TAG, "Packet completed");
+    return KE_PACKET_COMPLETE;
 }
 
 void Generate_TX_Message(PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args)
 {
-    /* Clear the buffer */
-    // flush_tx_buffer( dev );
+    // Reset TX buffer
     dev->tx_byte_count = 0;
 
-    /* Populate the Start of Line bytes */
+    // SOL
     dev->tx_buffer[KE_PCKT_SOL_BYTE0_POS] = KE_SOL_BYTE0;
     dev->tx_buffer[KE_PCKT_SOL_BYTE1_POS] = KE_SOL_BYTE1;
     dev->tx_buffer[KE_PCKT_SOL_BYTE2_POS] = KE_SOL_BYTE2;
     dev->tx_buffer[KE_PCKT_SOL_BYTE3_POS] = KE_SOL_BYTE3;
 
-    /* Command */
+    // Command
     dev->tx_buffer[KE_PCKT_CMD_POS] = cmd;
 
-    /* Align the buffer to start of the data bytes */
+    // Data starts here
     dev->tx_byte_count = KE_PCKT_DATA_START_POS;
 
-    // XXX The MCU may never need to send any data.
-
-    /* Populate supporting data */
     switch (cmd)
     {
     case KE_ACK:
@@ -798,51 +865,50 @@ void Generate_TX_Message(PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args)
         break;
     }
 
-    uint32_t len = dev->tx_byte_count + 1;  // +1 for CRC byte
+    // Length = bytes from SOL..DATA plus CRC byte
+    uint32_t len = dev->tx_byte_count + 1;
 
-    /* Populate the length */
-    dev->tx_buffer[KE_PCKT_LEN_BYTE0_POS] = (len >> 24) & 0xFF; // Most significant byte
-    dev->tx_buffer[KE_PCKT_LEN_BYTE1_POS] = (len >> 16) & 0xFF;
-    dev->tx_buffer[KE_PCKT_LEN_BYTE2_POS] = (len >> 8) & 0xFF;
-    dev->tx_buffer[KE_PCKT_LEN_BYTE3_POS] = (len >> 0) & 0xFF; // Least significant byte
+    // Write LEN (BE)
+    dev->tx_buffer[KE_PCKT_LEN_BYTE0_POS] = (uint8_t)(len >> 24);
+    dev->tx_buffer[KE_PCKT_LEN_BYTE1_POS] = (uint8_t)(len >> 16);
+    dev->tx_buffer[KE_PCKT_LEN_BYTE2_POS] = (uint8_t)(len >> 8);
+    dev->tx_buffer[KE_PCKT_LEN_BYTE3_POS] = (uint8_t)(len >> 0);
 
-    // Calculate CRC over the entire packet before adding CRC byte
+    // Compute CRC over [0 .. tx_byte_count-1] (excludes CRC byte itself)
     uint8_t crc = crc8(dev->tx_buffer, dev->tx_byte_count);
 
-    /* Packet is complete */
-    dev->tx_buffer[dev->tx_byte_count++] = crc;
+    // Append CRC
+    if (!tx_append_bytes(dev, &crc, 1)) {
+        LOGE(TAG, "TX buffer too small to append CRC");
+        return;
+    }
 
-    /* Send the packet */
+    // Transmit
     dev->init.transmit(dev->tx_buffer, dev->tx_byte_count);
 }
 
-KE_CP_OP_CODES KE_wait_for_response(PKE_PACKET_MANAGER dev, uint32_t timeout)
+KE_CP_OP_CODES KE_wait_for_response(PKE_PACKET_MANAGER dev, uint32_t timeout_ms)
 {
-    uint32_t start_t = ke_tick;
     KE_CP_OP_CODES last = KE_RESERVED;
-
-    // Non-blocking when timeout is 0
-    if (timeout == 0)
-    {
+    if (timeout_ms == 0) {
         LOGI(TAG, "No timeout, immediately continue");
         return last;
     }
 
-    // Wait for a response
-    while ((ke_tick - start_t) < timeout)
-    {
+    uint32_t start_ms = ke_tick;
+
+    while (!ke_ms_elapsed(start_ms, timeout_ms)) {
         KE_Service(dev);
 
-        // Exit once a response has been received
-        if (KE_get_flag(dev, KE_PENDING_RESPONSE) == 0)
-        {
+        // Response arrived
+        if (!KE_get_flag(dev, KE_PENDING_RESPONSE)) {
             last = dev->last_rx;
             dev->last_rx = KE_RESERVED;
             return last;
         }
 
 #ifdef ESP_PLATFORM
-        vTaskDelay(pdMS_TO_TICKS(1)); // Allow WDT refresh
+        vTaskDelay(pdMS_TO_TICKS(1)); // yield / feed WDT
 #endif
     }
 
