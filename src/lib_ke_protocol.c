@@ -860,6 +860,9 @@ void Generate_TX_Message(PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args)
         break;
     case KE_ENTER_BOOTLOADER:
         LOGI(TAG, "Bootloader Activation Sent");
+
+        // A response is needed.
+        KE_set_flag(dev, KE_PENDING_RESPONSE);
         break;
     default:
         break;
