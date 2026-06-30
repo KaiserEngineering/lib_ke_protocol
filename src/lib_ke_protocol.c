@@ -33,6 +33,7 @@ static const char *TAG = "KE";
 static uint32_t ke_tick = 0;
 
 static KE_STATUS KE_Process_Packet(PKE_PACKET_MANAGER dev);
+static void KE_Process_Completed_Packet(PKE_PACKET_MANAGER dev);
 static void clear_diagnostics(PKE_PACKET_MANAGER dev);
 static void flush_tx_buffer(PKE_PACKET_MANAGER dev);
 static void flush_rx_buffer(PKE_PACKET_MANAGER dev);
@@ -148,16 +149,7 @@ KE_STATUS KE_Service(PKE_PACKET_MANAGER dev)
      *********************************************************/
     if (KE_get_flag(dev, KE_PCKT_CMPLT))
     {
-        KE_Process_Packet(dev);
-
-        dev->num_retries = 0;
-        dev->rx_byte_count = 0;
-
-        KE_clear_flag(dev, KE_RX_IN_PROGRESS);
-        KE_clear_flag(dev, KE_PCKT_CMPLT);
-        flush_rx_buffer(dev);
-
-        reset_idle_time(dev);
+        KE_Process_Completed_Packet(dev);
     }
 
     /* See if the stream is active */
@@ -214,6 +206,20 @@ KE_STATUS KE_Service(PKE_PACKET_MANAGER dev)
     {
         return KE_OK;
     }
+}
+
+static void KE_Process_Completed_Packet(PKE_PACKET_MANAGER dev)
+{
+    KE_Process_Packet(dev);
+
+    dev->num_retries = 0;
+    dev->rx_byte_count = 0;
+
+    KE_clear_flag(dev, KE_RX_IN_PROGRESS);
+    KE_clear_flag(dev, KE_PCKT_CMPLT);
+    flush_rx_buffer(dev);
+
+    reset_idle_time(dev);
 }
 
 static KE_STATUS KE_Process_Packet(PKE_PACKET_MANAGER dev)
@@ -487,6 +493,17 @@ static KE_STATUS KE_Process_Packet(PKE_PACKET_MANAGER dev)
 
 KE_STATUS KE_Add_UART_Byte(PKE_PACKET_MANAGER dev, uint8_t byte)
 {
+    /*
+     * A transport may drain more than one frame before its application service
+     * loop runs.  Consume a previously completed frame before appending the
+     * first byte of the next one so the new frame cannot overshoot the old
+     * frame's declared length.  Protocol event flags remain latched for the
+     * next normal KE_Service() call.
+     */
+    if (KE_get_flag(dev, KE_PCKT_CMPLT)) {
+        KE_Process_Completed_Packet(dev);
+    }
+
     // Timeout on partial frame → resync to next SOL
     if (ke_ms_elapsed(dev->rx_time, RX_TIMEOUT_MS)) {
         if (dev->rx_byte_count > 0) {
