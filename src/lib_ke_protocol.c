@@ -931,6 +931,10 @@ void Generate_TX_Message(PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args)
     // Transmit
     dev->init.transmit(dev->tx_buffer, dev->tx_byte_count);
 }
+bool KE_waiting_for_response(PKE_PACKET_MANAGER dev)
+{
+    return dev != NULL && KE_get_flag(dev, KE_PENDING_RESPONSE);
+}
 
 KE_CP_OP_CODES KE_wait_for_response(PKE_PACKET_MANAGER dev, uint32_t timeout_ms)
 {

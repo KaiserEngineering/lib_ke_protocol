@@ -133,6 +133,7 @@ uint32_t get_KE_rx_abort_count( PKE_PACKET_MANAGER dev );
 uint32_t get_KE_tx_abort_count( PKE_PACKET_MANAGER dev );
 
 void Generate_TX_Message( PKE_PACKET_MANAGER dev, KE_CP_OP_CODES cmd, void *args );
+bool KE_waiting_for_response( PKE_PACKET_MANAGER dev );
 KE_CP_OP_CODES KE_wait_for_response( PKE_PACKET_MANAGER dev, uint32_t timeout );
 
 
