@@ -34,6 +34,7 @@ static uint32_t ke_tick = 0;
 
 static KE_STATUS KE_Process_Packet(PKE_PACKET_MANAGER dev);
 static void KE_Process_Completed_Packet(PKE_PACKET_MANAGER dev);
+static void KE_Reset_Incomplete_Packet(PKE_PACKET_MANAGER dev);
 static void clear_diagnostics(PKE_PACKET_MANAGER dev);
 static void flush_tx_buffer(PKE_PACKET_MANAGER dev);
 static void flush_rx_buffer(PKE_PACKET_MANAGER dev);
@@ -143,6 +144,21 @@ static inline bool ke_ms_elapsed(uint32_t start_ms, uint32_t timeout_ms) {
 
 KE_STATUS KE_Service(PKE_PACKET_MANAGER dev)
 {
+    /*
+     * Drop a partial packet after an inter-byte gap.  This is intentionally
+     * independent of total packet duration, so a long payload remains valid
+     * while bytes continue to arrive.
+     */
+    if (KE_get_flag(dev, KE_RX_IN_PROGRESS) &&
+        !KE_get_flag(dev, KE_PCKT_CMPLT) &&
+        dev->rx_byte_count > 0 &&
+        ke_ms_elapsed(dev->rx_time, RX_TIMEOUT_MS))
+    {
+        dev->diagnostic.rx_abort_count++;
+        LOGI(TAG, "RX inactive for %ums, dropping partial packet", RX_TIMEOUT_MS);
+        KE_Reset_Incomplete_Packet(dev);
+    }
+
     /*********************************************************
      * Packet has been received and is ready for
      * processing.
@@ -220,6 +236,14 @@ static void KE_Process_Completed_Packet(PKE_PACKET_MANAGER dev)
     flush_rx_buffer(dev);
 
     reset_idle_time(dev);
+}
+
+static void KE_Reset_Incomplete_Packet(PKE_PACKET_MANAGER dev)
+{
+    /* Old bytes may remain in memory; rx_byte_count makes them inaccessible. */
+    dev->rx_byte_count = 0;
+    KE_clear_flag(dev, KE_RX_IN_PROGRESS);
+    KE_clear_flag(dev, KE_PCKT_CMPLT);
 }
 
 static KE_STATUS KE_Process_Packet(PKE_PACKET_MANAGER dev)
@@ -504,13 +528,14 @@ KE_STATUS KE_Add_UART_Byte(PKE_PACKET_MANAGER dev, uint8_t byte)
         KE_Process_Completed_Packet(dev);
     }
 
-    // Timeout on partial frame → resync to next SOL
-    if (ke_ms_elapsed(dev->rx_time, RX_TIMEOUT_MS)) {
-        if (dev->rx_byte_count > 0) {
-            dev->diagnostic.rx_abort_count++;
-            LOGI(TAG, "RX timeout, resync");
-        }
-        rx_resync_to_sol(dev);
+    /* A new byte after excessive silence starts a completely new frame. */
+    if (KE_get_flag(dev, KE_RX_IN_PROGRESS) &&
+        dev->rx_byte_count > 0 &&
+        ke_ms_elapsed(dev->rx_time, RX_TIMEOUT_MS))
+    {
+        dev->diagnostic.rx_abort_count++;
+        LOGI(TAG, "RX inactive for %ums, dropping partial packet", RX_TIMEOUT_MS);
+        KE_Reset_Incomplete_Packet(dev);
     }
 
     dev->rx_time = ke_tick;
